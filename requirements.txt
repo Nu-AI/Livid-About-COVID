@@ -1,0 +1,13 @@
+# Choose either tensorflow-cpu or tensorflow-gpu
+tensorflow-gpu
+#tensorflow-cpu
+
+# Others
+keras
+seaborn
+matplotlib
+numpy
+scipy
+scikit-learn
+pandas
+
