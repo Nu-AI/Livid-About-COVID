@@ -10,4 +10,5 @@ numpy
 scipy
 scikit-learn
 pandas
-
+jupyter
+pydot
