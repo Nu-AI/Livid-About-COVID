@@ -7,7 +7,7 @@ the SARS-CoV-2 virus.
 *If you would like to use this work*, please reference this GitHub repository by the Zenodo
 citation in the top of this README.
 
-![COVID-19 in China](images/covid19_china.gif)
+<img src="images/covid19_china.gif" width="750px" />
 
 ## Forecasting the Reach of the COVID-19 Disease
 See the `notebooks` folder for our codebase. Currently, we use the daily case data from China
