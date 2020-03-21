@@ -1,9 +1,11 @@
+[![DOI](https://zenodo.org/badge/248896172.svg)](https://zenodo.org/badge/latestdoi/248896172)
+
 # Livid about COVID
 We present some preliminary results on forecasting the spread of the COVID-19 disease by
 the SARS-CoV-2 virus.
 
 *If you would like to use this work*, please reference this GitHub repository by the Zenodo
-citation in this README.
+citation in the top of this README.
 
 ## Forecasting the Reach of the COVID-19 Disease
 See the `notebooks` folder for our codebase. Currently, we use the daily case data from China
