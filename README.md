@@ -15,6 +15,10 @@ to predict the proceeding quantity of active and total cases several days in adv
 a deep learning recurrent architecture to integrate a sequence of previous days to make
 predictions on the days to come. For further details please see the Jupyter notebooks.
 
+<img src="images/bexar_county_covid_forecast1.png" width="250px" />
+<img src="images/bexar_county_covid_forecast2.png" width="250px" />
+<img src="images/bexar_county_covid_forecast3.png" width="250px" />
+
 ## Types of Data
 1. Confirmed Cases
 2. Deaths
