@@ -21,6 +21,17 @@ to flatten these curves by continuing and reinforcing the social distancing meas
 The stars in the plot indicate the specific days when social distancing was implemented 
 in the respective county. Data sources: CDC, European CDC, NYTimes, and Texas DSHS.
 
+## Installation
+The code in this repository was developed for Python 3.5 and above. To install dependency
+packages, run the following. 
+
+```bash
+pip install -r requirements.txt
+```
+
+Change the `tensorflow-x` line in `requirements.txt` depending on whether you will be running on
+CPU or GPU.
+
 ## Forecasting the Reach of the COVID-19 Disease
 See the `notebooks` folder for our codebase. Currently, we use the daily case data from China
 to predict the proceeding quantity of active and total cases several days in advance. We use
