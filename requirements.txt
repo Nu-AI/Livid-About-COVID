@@ -12,3 +12,5 @@ scikit-learn
 pandas
 jupyter
 pydot
+# For reading excel files via pandas
+xlrd
