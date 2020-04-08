@@ -125,23 +125,10 @@ class preprocess_new_virus_data:
                 rec = np.array(recovered)
                 dea = np.array(death)
             else:
-                # avg = np.concatenate((avg, np.array(active_confirmed)), axis =0)
-                # act = np.concatenate((act, np.array(active_confirmed)), axis=0)
-                # rec = np.concatenate((rec, np.array(active_confirmed)), axis=0)
-                # dea = np.concatenate((dea, np.array(active_confirmed)), axis=0)
                 avg = np.vstack((avg, np.array(avg_confirmed)))
                 act = np.vstack((act, np.array(active_confirmed)))
                 rec = np.vstack((rec, np.array(recovered)))
                 dea = np.vstack((dea, np.array(death)))
-            # if (count==2):
-            # print (avg, "This is the avg", avg.shape)
-        # print (count, len(arr), len(avg))
-        # avg = np.reshape(avg,(len(arr), count))
-        # print (avg[:,0], "the reshaped array", avg[:,0].shape)
-        # act = np.reshape(act, (len(arr), count))
-        # rec = np.reshape(rec, (len(arr), count))
-        # dea = np.reshape(dea, (len(arr), count))
-        # print (avg.shape)
         return avg, act, rec, dea
 
     def create_nday_list(self, n, data_list):
@@ -195,8 +182,6 @@ class preprocess_new_virus_data:
             case_dict['death'] = death[i]
 
             temp = aggregated_confirmed[i].tolist()
-            # print (temp)
-            # one_day_list = [active_confirmed[i][j+1] - active_confirmed[i][j] for j in range(len(active_confirmed[i])-1)]
 
             one_day_change[full_key_list[i]] = self.clear_list(
                 list(self.create_nday_list(1, temp)))
@@ -231,26 +216,10 @@ class preprocess_new_virus_data:
 
             new_df = pd.DataFrame.from_dict(arg, orient="index")
             new_df = new_df.transpose()
-
-            # for keys in new_df:
-            #     print (keys)
-            #     val_dict = new_df[keys]
-            #     for key in val_dict:
-            #         val_list = val_dict[key]
-            #         for i in range(len(val_list)):
-            #             print (val_list)
-            #             if (val_list[i]==0):
-            #                 val_list[i] =''
-            #
-            #             break
-            #         val_dict[key] = val_list
-            #     new_df[keys] = val_dict
             if (csv_name_list[count] == 'Total_cases' or csv_name_list[
                 count] == "Death" or csv_name_list[count] == 'Recovered'):
                 print("Entered the loop")
                 new_df.replace(0, '', inplace=True)
-            # new_df[orig_dict.isnull()] = ''
-            # print (new_df['anhui'], "*******\n", arg)
             new_df.to_csv(csv_name_list[count] + "_data.csv")
             count += 1
 
@@ -279,7 +248,8 @@ updated_dict = virus_methods.select_keys(keylist=key_list, dict=dict)
 (aggregated_confirmed, active_confirmed,
  recovered, death) = virus_methods.format_data(
     updated_dict
-)  # Obtain the final np arrays.
+)  
+# Obtain the final np arrays.
 (country_dict, total_dict, active_dict, recovered_dict, death_dict,
  one_day_dict, three_day_dict, seven_day_dict) = virus_methods.create_csv(
     new_list, population_list, aggregated_confirmed, active_confirmed,
@@ -290,6 +260,8 @@ print(total_dict.keys())
 virus_methods.save_csv(orig_dict, country_dict, total_dict, active_dict,
                        recovered_dict, death_dict, one_day_dict, three_day_dict,
                        seven_day_dict)
+
+# Special Cases
 df = pd.read_csv("Total_cases_data.csv")
 df2 = pd.read_csv("Death_data.csv")
 df3 = pd.read_csv("Recovered_data.csv")
@@ -299,53 +271,4 @@ df3.replace(0, '', inplace=True)
 df.to_csv("Total_cases_data.csv")
 df2.to_csv("Death_data.csv")
 df3.to_csv("Recovered_data.csv")
-print(aggregated_confirmed.shape, active_confirmed.shape)
 
-# print (aggregated_confirmed[0].shape, aggregated_confirmed[0:,])
-# country_dict={}
-# total_dict = {}
-# active_dict = {}
-# recovered_dict = {}
-# death_dict = {}
-#
-# for i in range(len(full_key_list)):
-#
-#     case_dict = {}
-#     case_dict['aggregated_confirmed'] = aggregated_confirmed[i]
-#     case_dict['active_confirmed'] = active_confirmed[i]
-#     case_dict['recovered'] = recovered[i]
-#     case_dict['death'] = death[i]
-#
-#     country_dict[full_key_list[i]] = {}
-#     country_dict[full_key_list[i]] = case_dict
-#
-#     total_dict[full_key_list[i]] = list(aggregated_confirmed[i])
-#     print (aggregated_confirmed[i].shape)
-#     active_dict[full_key_list[i]] = list(active_confirmed[i])
-#     recovered_dict[full_key_list[i]] = list(recovered[i])
-#     death_dict[full_key_list[i]] = list(death[i])
-#
-# country_df = pd.DataFrame.from_dict(country_dict)
-# country_df.to_csv("country_edit_data.csv")
-#
-# total_df = pd.DataFrame.from_dict(total_dict,orient="index")
-# total_df.to_csv("total_edit_data.csv",index=True)
-#
-# active_df = pd.DataFrame.from_dict(active_dict,orient="index")
-# active_df.to_csv("active_edit_data.csv", index=True)
-#
-# recovered_df = pd.DataFrame.from_dict(recovered_dict,orient="index")
-# recovered_df.to_csv("recovered_edit_data.csv", index =True)
-#
-# death_df = pd.DataFrame.from_dict(death_dict,orient="index")
-# death_df.to_csv("death_edit_data.csv", index=True)
-
-# print (avg,'\n',active,'\n',reco,'\n',death)
-# print (avg.shape)
-# print(a)
-# print (key_list)
-#
-# for key in updated_dict:
-#     print(key)
-#
-# print (updated_dict['new york'])
