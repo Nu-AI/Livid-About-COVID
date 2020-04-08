@@ -8,26 +8,37 @@ import seaborn as sns
 
 import os
 import urllib.request
-from . import read_new_data as rd
+import sys
+
+# Fix path to allow for import from scripts
+if os.path.basename(os.getcwd()) == 'scripts':
+    sys.path.append('..')
+elif 'scripts' in os.listdir():
+    sys.path.append('.')
+
+from scripts import read_new_data as rd
 
 sns.set()
 
-df = pd.read_csv('virus.csv')
+DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
+
+
+def dpath(filename):
+    """Yield path to file in data directory"""
+    return os.path.join(DATA_DIR, filename)
+
+
+df = pd.read_csv(dpath('virus.csv'))
 full_key_list = []
 count = 0
 for keys in df:
-    # print (keys)
     count += 1
     full_key_list.append(keys)
 
-# print (count)
 full_key_list.pop(0)
 
 
-# print (full_key_list)
-
-
-class preprocess_new_virus_data:
+class PreprocessNewVirusData:
 
     def __init__(self, args):
         self.args = args
@@ -61,8 +72,7 @@ class preprocess_new_virus_data:
         updated_dict = {}
         updated_dict[keylist[0]] = self.get_datetime(keylist, dict)
         for arg in self.args:
-            # print(arg)
-            if (arg in keylist):
+            if arg in keylist:
                 updated_dict[arg] = dict[arg]
 
         return updated_dict
@@ -88,15 +98,9 @@ class preprocess_new_virus_data:
             count += 1
             arr = dict[arg]
             arr = list(arr)
-            # newlist = [func(arr[i]) for i in range(len(arr))]
-            # a = np.array(newlist[45])
-            # print (a)
 
             for i in range(len(arr)):
-
                 temp_list = func(arr[i])
-                # if (count ==1):
-                # print (temp_list)
                 if len(temp_list) == 4:
                     avg_confirmed.append(temp_list[0])
                     active_confirmed.append(temp_list[1])
@@ -117,8 +121,7 @@ class preprocess_new_virus_data:
                     active_confirmed.append(0)
                     recovered.append(0)
                     death.append(0)
-            # print (arr[45])
-            if (count == 1):
+            if count == 1:
                 avg = np.array(avg_confirmed)
                 print("The shape of average is ", avg.shape)
                 act = np.array(active_confirmed)
@@ -131,7 +134,8 @@ class preprocess_new_virus_data:
                 dea = np.vstack((dea, np.array(death)))
         return avg, act, rec, dea
 
-    def create_nday_list(self, n, data_list):
+    @staticmethod
+    def create_nday_list(n, data_list):
         n_day_list = [int(data_list[i + n]) - int(data_list[i]) for i in
                       range(len(data_list) - n)]
         for j in range(n):
@@ -139,17 +143,17 @@ class preprocess_new_virus_data:
             n_day_list.insert(0, var)
         return n_day_list
 
-    def clear_list(self, list):
-        for i in range(len(list)):
-            if (list[i] == 0):
-                list[i] = ''
+    @staticmethod
+    def clear_list(list_):
+        for i in range(len(list_)):
+            if list_[i] == 0:
+                list_[i] = ''
             else:
                 break
-        return list
+        return list_
 
     def create_csv(self, full_key_list, pop_list, aggregated_confirmed,
                    active_confirmed, recovered, death):
-        # full_key_list, temp_dict = self.create_keylist(path)
         country_dict = {}
         total_dict = {}
         active_dict = {}
@@ -162,15 +166,10 @@ class preprocess_new_virus_data:
 
         print(len(full_key_list))
         for i in range(len(full_key_list)):
-            # print (i, "******")
-            case_dict = {}
-            # print (aggregated_confirmed.shape)
-            agg_numpy = aggregated_confirmed[i].astype(int)
-            rec_numpy = recovered[i].astype(int)
-            dea_numpy = death[i].astype(int)
+            case_dict = {
+                'aggregated_confirmed': aggregated_confirmed[i]
+            }
 
-            case_dict['aggregated_confirmed'] = aggregated_confirmed[
-                i]  # agg_numpyy[i]/int(pop_list[i])
             agg_numpy = aggregated_confirmed[i].astype(int)
             rec_numpy = recovered[i].astype(int)
             dea_numpy = death[i].astype(int)
@@ -216,8 +215,9 @@ class preprocess_new_virus_data:
 
             new_df = pd.DataFrame.from_dict(arg, orient="index")
             new_df = new_df.transpose()
-            if (csv_name_list[count] == 'Total_cases' or csv_name_list[
-                count] == "Death" or csv_name_list[count] == 'Recovered'):
+            if (csv_name_list[count] == 'Total_cases' or
+                    csv_name_list[count] == "Death" or
+                    csv_name_list[count] == 'Recovered'):
                 print("Entered the loop")
                 new_df.replace(0, '', inplace=True)
             new_df.to_csv(csv_name_list[count] + "_data.csv")
@@ -225,8 +225,7 @@ class preprocess_new_virus_data:
 
 
 virus_cities = rd.PreprocessVirusData()
-filename = os.path.join(os.path.dirname(__file__), '..', 'data',
-                        'Data319.xlsx')
+filename = dpath('Data319.xlsx')
 new_list, dict = virus_cities.create_keylist(filename)
 filtered_list = virus_cities.filter_list(new_list)
 
@@ -240,7 +239,7 @@ population_list = [filtered_list[i] for i in range(len(filtered_list)) if
 
 new_list = [new_list[i].split("-", 1)[0] for i in range(len(new_list))]
 print(new_list, "\n", len(new_list))
-virus_methods = preprocess_new_virus_data(
+virus_methods = PreprocessNewVirusData(
     new_list)  # Edit for whichever area you need the data for.
 key_list, dict, orig_dict = virus_methods.create_keylist_path(
     urllib.request.urlopen("http://hgis.uw.edu/virus/assets/virus.csv"))
@@ -248,7 +247,7 @@ updated_dict = virus_methods.select_keys(keylist=key_list, dict=dict)
 (aggregated_confirmed, active_confirmed,
  recovered, death) = virus_methods.format_data(
     updated_dict
-)  
+)
 # Obtain the final np arrays.
 (country_dict, total_dict, active_dict, recovered_dict, death_dict,
  one_day_dict, three_day_dict, seven_day_dict) = virus_methods.create_csv(
@@ -262,13 +261,12 @@ virus_methods.save_csv(orig_dict, country_dict, total_dict, active_dict,
                        seven_day_dict)
 
 # Special Cases
-df = pd.read_csv("Total_cases_data.csv")
-df2 = pd.read_csv("Death_data.csv")
-df3 = pd.read_csv("Recovered_data.csv")
+df = pd.read_csv(dpath("Total_cases_data.csv"))
+df2 = pd.read_csv(dpath("Death_data.csv"))
+df3 = pd.read_csv(dpath("Recovered_data.csv"))
 df.replace(0, '', inplace=True)
 df2.replace(0, '', inplace=True)
 df3.replace(0, '', inplace=True)
-df.to_csv("Total_cases_data.csv")
-df2.to_csv("Death_data.csv")
-df3.to_csv("Recovered_data.csv")
-
+df.to_csv(dpath("Total_cases_data.csv"))
+df2.to_csv(dpath("Death_data.csv"))
+df3.to_csv(dpath("Recovered_data.csv"))
