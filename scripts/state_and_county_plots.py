@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -125,7 +126,7 @@ class StateCountyPlots:
     # Apply the above updates to the dataframe                  #
     #############################################################
 
-    def apply_date_updates(self, df_dict):
+    def apply_date_updates(self, df_dict, tick_list, date_list):
         for key in df_dict:
             df_dict[key] = self.update_dates(df_dict[key], tick_list, date_list)
             if key == 'Bexar' or key == 'Texas':
@@ -164,22 +165,23 @@ class StateCountyPlots:
 def main():
     scplot = StateCountyPlots('Texas', 'Bexar', 'Dallas', 'Travis', 'Harris',
                               'Denton')
-    df_state, df_county = scplot.read_csvs("us-states.csv", "us-counties.csv")
+    states_fn = os.path.join(os.path.dirname(__file__), '..', 'data',
+                             "us-states.csv")
+    counties_fn = os.path.join(os.path.dirname(__file__), '..', 'data',
+                               "us-counties.csv")
+    df_state, df_county = scplot.read_csvs(states_fn, counties_fn)
     # print (df_state)
     df_state_r, df_state_counties = scplot.get_state_county_data(df_state,
                                                                  df_county)
     df_dict = scplot.get_counties_df(df_state_r, df_state_counties)
 
-    # df_dict = scplot.case_val_updates(10,df_dict)
     tick_list, date_list = scplot.create_dict_list(df_state_r)
-    df_dict = scplot.apply_date_updates(df_dict)
+    df_dict = scplot.apply_date_updates(df_dict, tick_list, date_list)
     day_list = [1, 2, 5]
     x = scplot.create_multiplier_arr(df_dict, day_list[0], 10)
     for i in range(1, 3, 1):
         x = np.vstack(
             (x, scplot.create_multiplier_arr(df_dict, day_list[i], 10)))
-
-    print(x.shape)
 
     sns.set()
     sns.set_style('whitegrid')
