@@ -28,16 +28,6 @@ def dpath(filename):
     return os.path.join(DATA_DIR, filename)
 
 
-df = pd.read_csv(dpath('virus.csv'))
-full_key_list = []
-count = 0
-for keys in df:
-    count += 1
-    full_key_list.append(keys)
-
-full_key_list.pop(0)
-
-
 class PreprocessNewVirusData:
 
     def __init__(self, args):
