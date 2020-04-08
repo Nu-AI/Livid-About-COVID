@@ -210,7 +210,7 @@ class PreprocessNewVirusData:
                     csv_name_list[count] == 'Recovered'):
                 print("Entered the loop")
                 new_df.replace(0, '', inplace=True)
-            new_df.to_csv(csv_name_list[count] + "_data.csv")
+            new_df.to_csv(dpath(csv_name_list[count] + "_data.csv"))
             count += 1
 
 

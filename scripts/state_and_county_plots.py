@@ -170,7 +170,6 @@ def main():
     counties_fn = os.path.join(os.path.dirname(__file__), '..', 'data',
                                "us-counties.csv")
     df_state, df_county = scplot.read_csvs(states_fn, counties_fn)
-    # print (df_state)
     df_state_r, df_state_counties = scplot.get_state_county_data(df_state,
                                                                  df_county)
     df_dict = scplot.get_counties_df(df_state_r, df_state_counties)
