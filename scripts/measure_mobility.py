@@ -23,7 +23,7 @@ class Mobility:
     # Scrape the county data from the state dataframe                      #
     ########################################################################
     def get_county_df(self):
-        state_string = self.state+"_test_mobility_new.csv"
+        state_string = self.state+"_mobility.csv"
         state_string=state_string.replace(" ", "_",1)
         df = pd.read_csv(state_string)
         if (self.state == 'US'):
