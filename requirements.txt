@@ -2,6 +2,9 @@
 tensorflow-gpu
 #tensorflow-cpu
 
+# pytorch
+torch
+
 # Others
 keras
 seaborn
