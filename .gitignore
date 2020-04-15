@@ -1,6 +1,11 @@
+# Ignore root directory files
+/*.csv
+/*.pt
+/*.npy
+
+# Local & generated files
 .idea/
 model.png
-# For now...
 scripts_local/
 
 # Byte-compiled / optimized / DLL files

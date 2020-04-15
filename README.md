@@ -33,10 +33,11 @@ Change the `tensorflow-x` line in `requirements.txt` depending on whether you wi
 CPU or GPU.
 
 ## Forecasting the Reach of the COVID-19 Disease
-See the `notebooks` folder for our codebase. Currently, we use the daily case data from China
-to predict the proceeding quantity of active and total cases several days in advance. We use
-a deep learning recurrent architecture to integrate a sequence of previous days to make
-predictions on the days to come. For further details please see the Jupyter notebooks.
+We use the worldwide daily case, mobility, hospital, population, and other data factors
+to forecast the number of cases. One model is a hybrid Susceptible-Infected-Recovered (SIR)
+& deep learning architecture and the other is a custom Long Short-Term Memory (LSTM)
+architecture. Our code can be run from the scripts in the `scripts` directory. Some code is
+available in the `notebooks` directory.
 
 Sample results (preliminary) for Bexar County, TX, USA.
 
