@@ -13,7 +13,7 @@ COVID-19 disease by the SARS-CoV-2 virus on various scales.
 *If you would like to use this work*, please reference this GitHub repository by the Zenodo
 citation in the top of this README.
 
-<img src="images/tx_case_counts.png" width="750px" />
+<img src="images/tx_case_counts_updated_2.png" width="750px" />
 
 This figure illustrates the trajectories for the total number of active cases in different
 counties in Texas, where _Bexar County cases are doubling every ~2-3 days_. It is critical
