@@ -393,6 +393,9 @@ for county_data in counties:
         data['Total Cases (observed)'] = (s[:, 0] + s[:, 1]) * reporting_rate
         data['Hospitalized'] = s[:, 0] * hosp_rate * reporting_rate
         data['Total Deaths'] = s[:, 1] * 0.034 * reporting_rate  # recovered * WHO mortality rate (recovered is actually recovered + deceased)
+        # Alternative way to save
+        #str = 'Average Case ' + str(cases[i]) + str(county_name) + '.npy
+        #np.save(str, data)
         np.save('Average Case {}.npy'.format(cases[i]), data)
 
 
