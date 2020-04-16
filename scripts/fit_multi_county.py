@@ -73,8 +73,7 @@ for county_data in counties:
     mobilities = {}
     for category in mkeys:
         mobilities[category] = OrderedDict()
-        with open(os.path.join(ROOT_DIR, 'data', 'Mobility data',
-                               '{}_mobility.csv'.format(state_name)), 'r') as f:
+        with open('{}_mobility.csv'.format(state_name), 'r') as f:
             csv_reader = csv.reader(f, delimiter=',')
             header = next(csv_reader)
             for row in csv_reader:
@@ -103,7 +102,7 @@ for county_data in counties:
     p = []
 
     df = pd.read_csv(
-        os.path.join(ROOT_DIR, 'data', 'US_County_AgeGrp_2018.csv'),
+        os.path.join('US_County_AgeGrp_2018.csv'),
         encoding="cp1252")
     print(df.keys())
     a = df.loc[df['STNAME'] == 'Texas'].loc[df['CTYNAME'] == 'Bexar County']
@@ -135,7 +134,7 @@ for county_data in counties:
     p = [p0_19, p20_44, p45_64, p65_74, p75_84, p85_p]
     print(p, "the p value is")
     rates = []
-    hr_filename = os.path.join(ROOT_DIR, 'data', 'covid_hosp_rate_by_age.csv')
+    hr_filename = os.path.join('covid_hosp_rate_by_age.csv')
     with open(hr_filename, 'r', encoding='mac_roman') as f:
         csv_reader = csv.reader(f, delimiter=',')
         header = next(csv_reader)
@@ -242,7 +241,7 @@ for county_data in counties:
     weights_name = '{}_weights.pt'.format(county_name)
 
     if not os.path.exists(weights_name):
-        iters = 5000
+        iters = 101  #500
     else:
         model.load_state_dict(torch.load(weights_name))
         iters = 0  # 1000
@@ -287,7 +286,7 @@ for county_data in counties:
     #################################################################################
     xN = (X[-1, :, :] + X[-2, :, :] + X[-3, :, :] + X[-4, :, :]) / 4  # average last 4 days
     qX = torch.stack([xN.clone() for i in range(200)])  # 200 x 1 x 6
-    qX = torch.cat((X, qX), axis=0)
+    qX = torch.cat((X, qX))
 
     sir_state, total_cases = model(Variable(qX, requires_grad=False))
     YY = np.squeeze(np.squeeze(total_cases.detach().numpy()))
@@ -305,7 +304,7 @@ for county_data in counties:
     #################################################################################
     xN = torch.Tensor(np.ones((1, 6)).astype(np.float32))
     rX = torch.stack([xN.clone() for i in range(200)])
-    rX = torch.cat((X, rX), axis=0)
+    rX = torch.cat((X, rX))
 
     sir_state, total_cases = model(Variable(rX, requires_grad=False))
     YY = np.squeeze(np.squeeze(total_cases.detach().numpy()))
@@ -318,12 +317,12 @@ for county_data in counties:
     plt.ylabel('Value')
     plt.title('SIR_state (full mobility)')
     plt.show()
-
-    ######## Forecast 120 more days at half-return to normal mobility ###############
-    #################################################################################
+    #
+    # ######## Forecast 120 more days at half-return to normal mobility ###############
+    # #################################################################################
     xN = (torch.Tensor(np.ones((1, 6)).astype(np.float32)) + X[-1, :, :]) / 2
     rX = torch.stack([xN.clone() for i in range(200)])  # 80 x 1 x 6
-    rX = torch.cat((X, rX), axis=0)
+    rX = torch.cat((X, rX))
 
     sir_state, total_cases = model(Variable(rX, requires_grad=False))
     YY = np.squeeze(np.squeeze(total_cases.detach().numpy()))
@@ -337,12 +336,12 @@ for county_data in counties:
     plt.title('SIR_state (split mobility)')
     plt.show()
 
-    ######## Forecast 120 more days at 25%-return to normal mobility ###############
-    #################################################################################
+    # ######## Forecast 120 more days at 25%-return to normal mobility ###############
+    # #################################################################################
     xN = torch.Tensor(np.ones((1, 6)).astype(np.float32)) * .20 + X[-1, :,
                                                                   :] * .80
     rX = torch.stack([xN.clone() for i in range(200)])  # 80 x 1 x 6
-    rX = torch.cat((X, rX), axis=0)
+    rX = torch.cat((X, rX))
 
     sir_state, total_cases = model(Variable(rX, requires_grad=False))
     YY = np.squeeze(np.squeeze(total_cases.detach().numpy()))
@@ -391,3 +390,12 @@ for county_data in counties:
         data['Hospitalized'] = s[:, 0] * hosp_rate * reporting_rate
         data['Total Deaths'] = s[:, 1] * 0.034 * reporting_rate  # recovered * WHO mortality rate (recovered is actually recovered + deceased)
         np.save('Average Case {}.npy'.format(cases[i]), data)
+
+
+
+import forecast_plotter as fp
+
+legend_list = ['Current Mobility', '20% Mobility', '50% Mobility', 'Normal Mobility']
+data_list, day_list = fp.get_arrays(fp.get_scenario_dict(fp.scenario_list), fp.scenario_list, fp.population)
+fp.plot_data(data_list, day_list,legend_list, 0)
+
