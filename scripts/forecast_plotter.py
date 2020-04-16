@@ -8,11 +8,9 @@ import matplotlib as mpl
 from datetime import datetime,timedelta
 from collections import OrderedDict
 
-
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_colwidth', -1)
-
 
 scenario_list = ['Current Mobility', '20% Return to Normal', '50% Return to Normal', 'Return to Normal Mobility']
 
@@ -71,9 +69,7 @@ def get_arrays(dict, scenario_list, population):
     return data_list, day_list
 
 
-def plot_data(data_list, day_list, gridplot):
-
-
+def plot_data(data_list, day_list, legend_list, gridplot):
 
 
     # Plotting parameters
@@ -101,7 +97,7 @@ def plot_data(data_list, day_list, gridplot):
     color_list = ['blue', 'orange', 'green', 'red', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
     map_list = ['a', 'b', 'c', 'd']
     xlabel = "Months"
-    ylabel = "Number of cases (in thousands)"
+    ylabel = "Number of cases"
     x_labelpad = 10
     y_labelpad = 30
 
@@ -129,11 +125,11 @@ def plot_data(data_list, day_list, gridplot):
         for i in range(len(data_list)):
             day_arr = day_list[i]
             data_arr = data_list[i]
-            label_string1 = map_list[i] + "1. {} (Active)".format(scenario_list[i])
-            label_string1 = map_list[i] + "1. {} (Total)".format(scenario_list[i])
+            label_string1 = map_list[i] + "1. {} (Active)".format(legend_list[i])
+            label_string2 = map_list[i] + "1. {} (Total)".format(legend_list[i])
             plt.plot(day_arr[0:max_days], data_arr[0][0:max_days], label=label_string1, linestyle="--",
                      color=color_list[i], linewidth=linewidth)
-            plt.plot(day_arr[0:max_days], data_arr[1][0:max_days], label="a2. {} (Active)".format(scenario_list[i]),
+            plt.plot(day_arr[0:max_days], data_arr[1][0:max_days], label=label_string2,
                      color=color_list[i], linewidth=linewidth)
 
         plt.xlabel(xlabel, **sp_label_font, labelpad=x_labelpad)
@@ -150,7 +146,7 @@ def plot_data(data_list, day_list, gridplot):
         manager.resize(*manager.window.maxsize())
         # plt.tight_layout(pad=0.5)
         #plt.savefig("Bexar_total.pdf")
-        #plt.show()
+        plt.show()
 
     else:
         fig, ax = plt.subplots(1,2)
@@ -164,11 +160,11 @@ def plot_data(data_list, day_list, gridplot):
                 data_arr = data_list[i]
                 if (count_y):
                     temp = 1
-                    label_string = map_list[i] + ". Total" + scenario_list[i]
+                    label_string = map_list[i] + ". " + legend_list[i] + " (Total)"
                     linestyle = "-"
                 else:
                     temp =0
-                    label_string = map_list[i] + ". Active" + scenario_list[i]
+                    label_string = map_list[i] + ". " + legend_list[i] +" (Active)"
                     linestyle = "--"
                 ax1.plot(day_arr[0:max_days], data_arr[temp][0:max_days], label=label_string, linestyle=linestyle,
                          color=color_list[i], linewidth=linewidth)
@@ -180,9 +176,9 @@ def plot_data(data_list, day_list, gridplot):
             ax1.set_xticklabels(xticklabel, rotation=xtick_rotation, **tick_font)
             if (log_scale):
                 ax1.set_yscale('log')
-            ax1.legend(frameon=False, loc = 'upper left')
+            ax1.legend(frameon=False)
             #ax1.set_title(title, ** title_font)
-
+            ax1.set_yticklabels(ax1.get_yticks(), **tick_font)
             mf = mtick.ScalarFormatter(useMathText=True)
             mf.set_powerlimits((-5, 5))
             ax1.yaxis.set_major_formatter(mf)
@@ -194,5 +190,6 @@ def plot_data(data_list, day_list, gridplot):
         #plt.savefig("_split_plots.pdf", orientation='portrait')
         plt.show(fig)
 
-data_list, day_list = get_arrays(get_scenario_dict(scenario_list), scenario_list, population)
-plot_data(data_list, day_list,1)
+# legend_list = ['Current Mobility', '20% Mobility', '50% Mobility', 'Normal Mobility']
+# data_list, day_list = get_arrays(get_scenario_dict(scenario_list), scenario_list,population)
+# plot_data(data_list, day_list,legend_list,0)
