@@ -73,7 +73,9 @@ for county_data in counties:
     mobilities = {}
     for category in mkeys:
         mobilities[category] = OrderedDict()
-        with open('{}_mobility.csv'.format(state_name), 'r') as f:
+        with open(os.path.join(ROOT_DIR, 'data', 'Mobility data',
+                               '{}_mobility.csv'.format(state_name)), 'r') as f:
+        #with open('{}_mobility.csv'.format(state_name), 'r') as f:
             csv_reader = csv.reader(f, delimiter=',')
             header = next(csv_reader)
             for row in csv_reader:
@@ -100,12 +102,12 @@ for county_data in counties:
 
     # Estimate hospitalization rate
     p = []
-
-    df = pd.read_csv(
-        os.path.join('US_County_AgeGrp_2018.csv'),
-        encoding="cp1252")
+    df = pd.read_csv(os.path.join(ROOT_DIR, 'data', 'US_County_AgeGrp_2018.csv', encoding="cp1252")
+#     df = pd.read_csv(
+#         os.path.join('US_County_AgeGrp_2018.csv'),
+#         encoding="cp1252")
     print(df.keys())
-    a = df.loc[df['STNAME'] == 'Texas'].loc[df['CTYNAME'] == 'Bexar County']
+    a = df.loc[df['STNAME'] == 'Texas'].loc[df['CTYNAME'] == ' County']
     print(a)
     key_list = []
     for keys in a.keys():
@@ -134,7 +136,9 @@ for county_data in counties:
     p = [p0_19, p20_44, p45_64, p65_74, p75_84, p85_p]
     print(p, "the p value is")
     rates = []
-    hr_filename = os.path.join('covid_hosp_rate_by_age.csv')
+
+    hr_filename = os.path.join(ROOT_DIR, 'data', 'covid_hosp_rate_by_age.csv')
+    #hr_filename = os.path.join('covid_hosp_rate_by_age.csv')
     with open(hr_filename, 'r', encoding='mac_roman') as f:
         csv_reader = csv.reader(f, delimiter=',')
         header = next(csv_reader)
@@ -241,7 +245,7 @@ for county_data in counties:
     weights_name = '{}_weights.pt'.format(county_name)
 
     if not os.path.exists(weights_name):
-        iters = 101  #500
+        iters = 5000  #5000
     else:
         model.load_state_dict(torch.load(weights_name))
         iters = 0  # 1000
