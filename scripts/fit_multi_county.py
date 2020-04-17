@@ -131,7 +131,7 @@ for county_data in counties:
     #         os.path.join('US_County_AgeGrp_2018.csv'),
     #         encoding="cp1252")
     print(df.keys())
-    a = df.loc[df['STNAME'] == 'Texas'].loc[df['CTYNAME'] == ' County']
+    a = df.loc[df['STNAME'] == 'Texas'].loc[df['CTYNAME'] == '{} County'.format(county_name)]
     print(a)
     key_list = []
     for keys in a.keys():
