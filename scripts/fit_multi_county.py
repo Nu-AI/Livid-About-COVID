@@ -16,6 +16,8 @@ from torch import optim
 # root of workspace
 ROOT_DIR = os.path.join(os.path.dirname(__file__), '..')
 sys.path.append(ROOT_DIR)
+# directory of data
+DATA_DIR = os.path.join(ROOT_DIR, 'data')
 import SIRNet
 from SIRNet import util
 from SIRNet import forecast_plotter as fp
@@ -28,6 +30,18 @@ delay_days = 4         # Days between becoming infected / positive confirmation 
 bed_pct = 0.40         # Portion of hospital beds that can be allocated for Covid-19 patients
 hosp_rate = 0.20       # Portion of cases that result in hospitalization
 # @formatter:on
+
+## TODO LIST
+# - What is residential mobility? David thinks it should be ignored, not very
+#   helpful
+# - X
+
+# NOTE: if CUDA is slower for you, just make device 'cpu'...
+# TODO move to argpargse/main
+if not torch.cuda.is_available():
+    device = torch.device('cpu')  # use CPU
+else:
+    device = torch.device('cuda')  # use GPU/CUDA
 
 # Download latest data
 import urllib.request
@@ -125,7 +139,7 @@ for county_data in counties:
     cases = shift_cases
 
     # Load Activity Data
-    state_path = os.path.join(ROOT_DIR, 'data', 'Mobility data',
+    state_path = os.path.join(DATA_DIR, 'Mobility data',
                               '{}_mobility.csv'.format(state_name))
     if os.path.exists(state_path):
         mkeys = ['Retail & recreation', 'Grocery & pharmacy', 'Parks',
@@ -133,7 +147,7 @@ for county_data in counties:
         mobilities = {}
         for category in mkeys:
             mobilities[category] = OrderedDict()
-            with open(os.path.join(ROOT_DIR, 'data', 'Mobility data',
+            with open(os.path.join(DATA_DIR, 'Mobility data',
                                    '{}_mobility.csv'.format(state_name)),
                       'r') as f:
                 csv_reader = csv.reader(f, delimiter=',')
@@ -153,7 +167,7 @@ for county_data in counties:
         mobilities = {}
         for category in mkeys:
             mobilities[category] = OrderedDict()
-            with open(os.path.join(ROOT_DIR, 'data', 'Mobility data',
+            with open(os.path.join(DATA_DIR, 'Mobility data',
                                    'US_mobility.csv'), 'r') as f:
                 csv_reader = csv.reader(f, delimiter=',')
                 header = next(csv_reader)
@@ -181,7 +195,7 @@ for county_data in counties:
     # Estimate hospitalization rate
     p = []
     df = pd.read_csv(
-        os.path.join(ROOT_DIR, 'data', 'US_County_AgeGrp_2018.csv'),
+        os.path.join(DATA_DIR, 'US_County_AgeGrp_2018.csv'),
         encoding="cp1252"
     )
     a = df.loc[(df['STNAME'] == state_name) &
@@ -212,10 +226,10 @@ for county_data in counties:
         else:
             p85_p = int(a[key_list[21]])
     p = [p0_19, p20_44, p45_64, p65_74, p75_84, p85_p]
-    print(p, "the p value is")
+    print('the p value is', p)
     rates = []
 
-    hr_filename = os.path.join(ROOT_DIR, 'data', 'covid_hosp_rate_by_age.csv')
+    hr_filename = os.path.join(DATA_DIR, 'covid_hosp_rate_by_age.csv')
     with open(hr_filename, 'r', encoding='mac_roman') as f:
         csv_reader = csv.reader(f, delimiter=',')
         header = next(csv_reader)
@@ -260,13 +274,13 @@ for county_data in counties:
     ###################### Formatting Data ######################
     #############################################################
     # Data is 6 columns of mobility, 1 column of case number
-    data = np.asarray(data).astype(float)
+    data = np.asarray(data).astype(np.float32)
     data = data[5:, :]  # Skip 5 days until we have 10+ patients
 
     data[:, :6] = (
             1.0 + data[:, :6] / 100.0
     )  # convert percentages of change to fractions of activity
-    print(np.asarray(data).shape)
+    print('data.shape', data.shape)
 
     # Split into input and output data
     X, Y = data[:, :6], data[:, 6]
@@ -280,20 +294,26 @@ for county_data in counties:
     Y = Y / population
     # multiply by suspected under-reporting rate
     Y = Y / reporting_rate
-    i0 = Y[0]
-    X = torch.Tensor(X)
-    Y = torch.Tensor(Y)
+    # i0 and e0 (assume incubation of `delay_days`)
+    e0 = Y[0]
+    # e0 minus the gradient between of Y (point at 0 and point at delay_days)
+    # times delay_days = 2 * e0 - Y[delay_days], clip at 0
+    i0 = max(2 * e0 - Y[delay_days], 0)
+    print('e0={} | i0={}'.format(e0, i0))
+    # To Torch on device
+    X = torch.from_numpy(X).to(device=device)
+    Y = torch.from_numpy(Y).to(device=device)
 
     # Add batch dimension
     X = X.reshape(X.shape[0], 1, X.shape[1])  # time x batch x channels
     Y = Y.reshape(Y.shape[0], 1, 1)  # time x batch x channels
 
 
-    def build_model(i0, b_lstm=False, update_k=False):
+    def build_model(e0, i0, b_lstm=False, update_k=False):
         model = torch.nn.Sequential()
-        model.add_module("name", SIRNet.SEIRNet(i0=i0, b_lstm=b_lstm,
-                                                update_k=update_k))
-        return model
+        model.add_module('SEIRNet', SIRNet.SEIRNet(e0=e0, i0=i0, b_lstm=b_lstm,
+                                                   update_k=update_k))
+        return model.to(device=device)
 
 
     def train(model, loss, optimizer, x, y, log_transform=True):
@@ -319,7 +339,7 @@ for county_data in counties:
     # TRY_LSTM = True
     UPDATE_K = False
 
-    model = build_model(i0, b_lstm=TRY_LSTM, update_k=UPDATE_K)
+    model = build_model(e0, i0, b_lstm=TRY_LSTM, update_k=UPDATE_K)
     loss = torch.nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.01)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=4000, gamma=0.1)
@@ -372,7 +392,7 @@ for county_data in counties:
         #       X[-1, :, :] * (1 - p))
         xN = torch.ones((1, 6), dtype=torch.float32) * p
         print('xN', xN)
-        rX = xN[:, None, ...].expand(200, 1, 6)  # 200 x 1 x 6
+        rX = xN[:, None, ...].expand(200, 1, 6).to(device=device)  # 200 x 1 x 6
         rX = torch.cat((X, rX), axis=0)
 
         # Give mobility number as percentage, exclude residences
@@ -423,7 +443,7 @@ for county_data in counties:
     xN = X[-1, :, :]  # lockdown
     xN[0, :] = torch.Tensor(
         np.array([.1, .1, .1, .1, .1, 3]).astype(np.float32))
-    qX = xN[:, None, ...].expand(200, 1, 6)  # 200 x 1 x 6
+    qX = xN[:, None, ...].expand(200, 1, 6).to(device=device)  # 200 x 1 x 6
     qX = torch.cat((X, qX), axis=0)
 
     sir_state, total_cases = model(qX)
@@ -435,8 +455,8 @@ for county_data in counties:
 
     ######## Forecast 120 more days returning to normal mobility ###############
     ############################################################################
-    xN = torch.Tensor(np.ones((1, 6)).astype(np.float32))
-    rX = xN[:, None, ...].expand(200, 1, 6)  # 200 x 1 x 6
+    xN = torch.ones((1, 6), dtype=torch.float32)
+    rX = xN[:, None, ...].expand(200, 1, 6).to(device=device)  # 200 x 1 x 6
     rX = torch.cat((X, rX), axis=0)
 
     sir_state, total_cases = model(rX)
@@ -448,8 +468,9 @@ for county_data in counties:
 
     ######## Forecast 120 more days at half-return to normal mobility ##########
     ############################################################################
-    xN = (torch.Tensor(np.ones((1, 6)).astype(np.float32)) + X[-1, :, :]) / 2
-    rX = xN[:, None, ...].expand(200, 1, 6)  # 200 x 1 x 6
+    xN = (torch.ones((1, 6), dtype=torch.float32).to(device=device) +
+          X[-1, :, :]) / 2
+    rX = xN[:, None, ...].expand(200, 1, 6).to(device=device)  # 200 x 1 x 6
     rX = torch.cat((X, rX), axis=0)
 
 
@@ -462,7 +483,7 @@ for county_data in counties:
 
     ######## Forecast 120 more days at 25%-return to normal mobility ###########
     ############################################################################
-    xN = (torch.Tensor(np.ones((1, 6)).astype(np.float32)) * .20 +
+    xN = (torch.ones((1, 6), dtype=torch.float32).to(device=device) * .20 +
           X[-1, :, :] * .80)
     rX = xN[:, None, ...].expand(200, 1, 6)  # 200 x 1 x 6
     rX = torch.cat((X, rX), axis=0)

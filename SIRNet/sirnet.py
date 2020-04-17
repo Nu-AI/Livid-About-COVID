@@ -87,8 +87,9 @@ class SIRNet(torch.nn.Module):
 ###################### Defining Model #######################
 #############################################################
 class SEIRNet(torch.nn.Module):
-    def __init__(self, input_size=6, i0=5.6e-6, update_k=True, hidden_size=4,
-                 output_size=1, b_lstm=False, lstm_hidden_size=6):
+    def __init__(self, input_size=6, e0=5.6e-6, i0=5.2e-6, update_k=True,
+                 hidden_size=4, output_size=1, b_lstm=False,
+                 lstm_hidden_size=6):
         super(SEIRNet, self).__init__()
 
         assert input_size == 6, 'Input dimension must be 6'  # for now
@@ -113,7 +114,8 @@ class SEIRNet(torch.nn.Module):
 
         self.k = .20  # Parameter(k_init)  # gamma - 5 day (3-7 day) average duration of infection:	Woelfel et al
         self.s = .20  # Parameter(s_init)  # sigma - 5 day incubation period (	Backer et al )
-        self.i0 = i0
+        self.e0 = float(e0)
+        self.i0 = float(i0)
 
         # if not update_k:  # TODO: disable for now as k is a float...
         #     self.k.requires_grad = False
@@ -142,9 +144,9 @@ class SEIRNet(torch.nn.Module):
         hidden = torch.zeros(
             batch_size, self.hidden_size
         ).to(device=X.device)  # hidden state is i,r,s,e
-        hidden[:, 0] = self.i0  # initial infected
-        hidden[:  3] = self.i0  # initial exposed
-        hidden[:, 2] = 1.0 - 2 * self.i0  # susceptible0
+        hidden[:, 0] = self.e0  # initial infected
+        hidden[:, 3] = self.e0  # initial exposed
+        hidden[:, 2] = 1.0 - 2 * self.e0  # susceptible0
         p = hidden.clone()  # init previous state
         outputs = []
         hiddens = []
