@@ -40,7 +40,8 @@ if not os.path.exists('us-counties.csv'):
 # Determine the 5 biggest county case rates in these 5 states:
 # NY, NJ, CA, MI, PA, TX
 counties = []
-counties.append(['New York City', 'New York', 8.0e6, 32000])
+# counties.append(['New York City', 'New York', 8.0e6, 32000])
+# counties.append(['New York', 'New York', 8.0e6, 32000])
 counties.append(['Bexar', 'Texas', 1.99e6,
                  7793])  # county, state, population, hospital beds
 
@@ -117,8 +118,10 @@ for county_data in counties:
     # Common Case Data + Activity Data Dates
     data = []
     common_dates = []
+    print('cases.keys()', cases.keys())
     for k in cases.keys():
         if k not in mobility.keys():
+            print(k, 'not in', mobility.keys())
             continue
         data.append(mobility[k] + [cases[k]])  # total cases
 
@@ -127,11 +130,9 @@ for county_data in counties:
     df = pd.read_csv(
         os.path.join(ROOT_DIR, 'data', 'US_County_AgeGrp_2018.csv'),
         encoding="cp1252")
-    #     df = pd.read_csv(
-    #         os.path.join('US_County_AgeGrp_2018.csv'),
-    #         encoding="cp1252")
     print(df.keys())
-    a = df.loc[df['STNAME'] == 'Texas'].loc[df['CTYNAME'] == ' County']
+    # a = df.loc[df['STNAME'] == 'Texas'].loc[df['CTYNAME'] == ' County']
+    a = df.loc[(df['STNAME'] == state_name) & (df['CTYNAME'] == county_name + ' County')]
     print(a)
     key_list = []
     for keys in a.keys():
@@ -205,19 +206,19 @@ for county_data in counties:
     ###################### Formatting Data ######################
     #############################################################
 
+    print('data', data)
     data = np.asarray(data).astype(
         float)  # Data is 6 columns of mobility, 1 column of case number
     data = data[5:, :]  # Skip 5 days until we have 10+ patients
 
-    data[:, :6] = (1.0 + data[:,
-                         :6] / 100.0)  # convert percentages of change to fractions of activity
+    data[:, :6] = (1.0 + data[:, :6] / 100.0)  # convert percentages of change to fractions of activity
     print(np.asarray(data).shape)
 
     # Split into input and output data
     X, Y = data[:, :6], data[:, 6]
     # X is now retail&rec, grocery&pharm, parks, transit_stations, workplace, residential
     # Y is the total number of cases
-    plt.plot(Y);
+    plt.plot(Y)
     plt.show()
 
     # divide out population of county
@@ -479,7 +480,7 @@ for county_data in counties:
         # np.save(str, data)
         np.save('Average Case {}.npy'.format(cases[i]), data)
 
-from . import forecast_plotter as fp
+from scripts import forecast_plotter as fp
 
 legend_list = ['Current Mobility', '20% Mobility', '50% Mobility',
                'Normal Mobility']
