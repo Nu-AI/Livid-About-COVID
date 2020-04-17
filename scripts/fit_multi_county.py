@@ -1,6 +1,7 @@
 import os
 import csv
 import sys
+import math
 from collections import OrderedDict
 
 import urllib.request
@@ -34,10 +35,13 @@ hosp_rate = 0.20       # Portion of cases that result in hospitalization
 ## TODO LIST
 # - What is residential mobility? David thinks it should be ignored, not very
 #   helpful
-# - X
+# - Use population-weighted density instead (census tracts)
+# - Account for better underreporting (paper from Stanford estimated 50-80x
+#   undercount (relative to confirmed) of cases in Santa Clara CA, US
+#   [Bendavid, Mulaney, et al. "COVID-19 Antibody Seroprevalence..."]
 
 # NOTE: if CUDA is slower for you, just make device 'cpu'...
-# TODO move to argpargse/main
+# TODO move to argparse/main
 if not torch.cuda.is_available():
     device = torch.device('cpu')  # use CPU
 else:
@@ -141,9 +145,9 @@ for county_data in counties:
     # Load Activity Data
     state_path = os.path.join(DATA_DIR, 'Mobility data',
                               '{}_mobility.csv'.format(state_name))
+    mkeys = ['Retail & recreation', 'Grocery & pharmacy', 'Parks',
+             'Transit stations', 'Workplace', 'Residential']
     if os.path.exists(state_path):
-        mkeys = ['Retail & recreation', 'Grocery & pharmacy', 'Parks',
-                 'Transit stations', 'Workplace', 'Residential']
         mobilities = {}
         for category in mkeys:
             mobilities[category] = OrderedDict()
@@ -162,8 +166,6 @@ for county_data in counties:
                             mobilities[category][date] = vals[i]
     else:
         print('No county-level mobility available.  Reverting to state')
-        mkeys = ['Retail & recreation', 'Grocery & pharmacy', 'Parks',
-                 'Transit stations', 'Workplace', 'Residential']
         mobilities = {}
         for category in mkeys:
             mobilities[category] = OrderedDict()
@@ -316,12 +318,12 @@ for county_data in counties:
         return model.to(device=device)
 
 
-    def train(model, loss, optimizer, x, y, log_transform=True):
+    def train(model, loss, optimizer, x, y, log_loss=True):
         optimizer.zero_grad()
 
         hx, fx = model.forward(x)
 
-        if log_transform:
+        if log_loss:
             output = loss.forward(torch.log(fx), torch.log(y))
         else:
             output = loss.forward(fx, y)
@@ -352,10 +354,11 @@ for county_data in counties:
     else:
         model.load_state_dict(torch.load(weights_name))
         iters = 1000
+        iters = 0
 
     for i in range(iters):
         cost = 0.
-        num_batches = len(X) // batch_size
+        num_batches = math.ceil(len(X) / batch_size)
         for k in range(num_batches):
             start, end = k * batch_size, (k + 1) * batch_size
             cost += train(model, loss, optimizer, X[start:end], Y[start:end])
@@ -388,18 +391,17 @@ for county_data in counties:
     ############################################################################
     for i in range(0, 101, 10):
         p = i / 100.0
-        # xN = (torch.ones((1, 6), dtype=torch.float32) * p +
+        # xN = (torch.ones((1, 6), dtype=torch.float32, device=device) * p +
         #       X[-1, :, :] * (1 - p))
-        xN = torch.ones((1, 6), dtype=torch.float32) * p
+        xN = torch.ones((1, 6), dtype=torch.float32, device=device) * p
         print('xN', xN)
-        rX = xN[:, None, ...].expand(200, 1, 6).to(device=device)  # 200 x 1 x 6
-        rX = torch.cat((X, rX), axis=0)
+        rX = xN.expand(200, *xN.shape)  # 200 x 1 x 6
+        rX = torch.cat((X, rX), dim=0)
 
         # Give mobility number as percentage, exclude residences
         pct = int(np.mean(util.to_numpy(xN)[:5]) * 100)
 
         sir_state, total_cases = model(rX)
-        YY = util.to_numpy(total_cases)
 
         # Plot the SIR state
         s = util.to_numpy(sir_state)
@@ -440,14 +442,12 @@ for county_data in counties:
 
     ######## Forecast 200 more days at current quarantine mobility #############
     ############################################################################
-    xN = X[-1, :, :]  # lockdown
-    xN[0, :] = torch.Tensor(
-        np.array([.1, .1, .1, .1, .1, 3]).astype(np.float32))
-    qX = xN[:, None, ...].expand(200, 1, 6).to(device=device)  # 200 x 1 x 6
-    qX = torch.cat((X, qX), axis=0)
+    xN = torch.tensor([[.1, .1, .1, .1, .1, 3]],
+                      dtype=torch.float32, device=device)
+    qX = xN.expand(200, *xN.shape)  # 200 x 1 x 6
+    qX = torch.cat((X, qX), dim=0)
 
     sir_state, total_cases = model(qX)
-    YY = util.to_numpy(total_cases)
 
     # Plot the SIR state
     sir_state1 = util.to_numpy(sir_state)
@@ -455,41 +455,37 @@ for county_data in counties:
 
     ######## Forecast 120 more days returning to normal mobility ###############
     ############################################################################
-    xN = torch.ones((1, 6), dtype=torch.float32)
-    rX = xN[:, None, ...].expand(200, 1, 6).to(device=device)  # 200 x 1 x 6
-    rX = torch.cat((X, rX), axis=0)
+    xN = torch.ones((1, 6), dtype=torch.float32, device=device)
+    rX = xN.expand(200, *xN.shape)  # 200 x 1 x 6
+    rX = torch.cat((X, rX), dim=0)
 
     sir_state, total_cases = model(rX)
-    YY = util.to_numpy(total_cases)
 
     # Plot the SIR state
     sir_state2 = util.to_numpy(sir_state)
     util.plot_sir_state(sir_state2, title='SIR_state (full mobility)')
 
-    ######## Forecast 120 more days at half-return to normal mobility ##########
+    ######## Forecast 200 more days at half-return to normal mobility ##########
     ############################################################################
-    xN = (torch.ones((1, 6), dtype=torch.float32).to(device=device) +
+    xN = (torch.ones((1, 6), dtype=torch.float32, device=device) +
           X[-1, :, :]) / 2
-    rX = xN[:, None, ...].expand(200, 1, 6).to(device=device)  # 200 x 1 x 6
-    rX = torch.cat((X, rX), axis=0)
-
+    rX = xN.expand(200, *xN.shape)  # 200 x 1 x 6
+    rX = torch.cat((X, rX), dim=0)
 
     sir_state, total_cases = model(rX)
-    YY = util.to_numpy(total_cases)
 
     # Plot the SIR state
     sir_state3 = util.to_numpy(sir_state)
     util.plot_sir_state(sir_state3, title='SIR_state (split mobility)')
 
-    ######## Forecast 120 more days at 25%-return to normal mobility ###########
+    ######## Forecast 200 more days at 20%-return to normal mobility ###########
     ############################################################################
-    xN = (torch.ones((1, 6), dtype=torch.float32).to(device=device) * .20 +
+    xN = (torch.ones((1, 6), dtype=torch.float32, device=device) * .20 +
           X[-1, :, :] * .80)
-    rX = xN[:, None, ...].expand(200, 1, 6)  # 200 x 1 x 6
-    rX = torch.cat((X, rX), axis=0)
+    rX = xN.expand(200, *xN.shape)  # 200 x 1 x 6
+    rX = torch.cat((X, rX), dim=0)
 
     sir_state, total_cases = model(rX)
-    YY = util.to_numpy(total_cases)
 
     # Plot the SIR state
     sir_state4 = util.to_numpy(sir_state)
