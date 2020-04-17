@@ -196,7 +196,8 @@ for county_data in counties:
     data = np.asarray(data).astype(float)  # Data is 6 columns of mobility, 1 column of case number
     #data = data[5:, :]  # Skip 5 days until we have 10+ patients
     #data[:,5] = 0.0 # residential factored out
-    data = data[10:,:] # Start us at Day 10
+    i0 = float(data[4, 6]) / population
+    data = data[5:,:] # Start us at Day 10
     
 
     data[:, :6] = (1.0 + data[:, :6] / 100.0)  # convert percentages of change to fractions of activity
@@ -222,7 +223,6 @@ for county_data in counties:
     Y = Y / population
     # multiply by suspected under-reporting rate
     Y = Y / reporting_rate
-    i0 = Y[0]
     X = torch.Tensor(X)
     Y = torch.Tensor(Y)
 
@@ -459,6 +459,7 @@ for county_data in counties:
         data['Active Cases (observed)'] = s[:, 0] * reporting_rate
         data['Total Cases (latent)'] = s[:, 0] + s[:, 1]  # infected + recovered
         data['Total Cases (observed)'] = (s[:, 0] + s[:, 1]) * reporting_rate
+        data['Total Cases (actual)'] = Y * reporting_rate
         data['Hospitalized'] = s[:, 0] * hosp_rate * reporting_rate
         data['Total Deaths'] = s[:, 1] * 0.034 * reporting_rate  # recovered * WHO mortality rate (recovered is actually recovered + deceased)
         # Alternative way to save
@@ -472,5 +473,5 @@ import forecast_plotter as fp
 
 legend_list = ['20% Mobility', 'Normal Mobility', '50% Mobility', '75% Mobility']
 data_list, day_list = fp.get_arrays(fp.get_scenario_dict(fp.scenario_list), fp.scenario_list, fp.population)
-fp.plot_data(data_list, day_list,legend_list, 0)
+fp.plot_data(data_list, day_list,legend_list, 0, Y)
 

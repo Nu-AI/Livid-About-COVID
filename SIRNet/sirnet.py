@@ -137,8 +137,9 @@ class SEIRNet(torch.nn.Module):
             torch.zeros(batch_size, self.hidden_size)
         ).to(device=X.device)  # hidden state is i,r,s
         hidden[:, 0] = self.i0  # initial infected
-        hidden[:, 3] = self.i0  # initial exposed
+        hidden[: 3] = self.i0  # initial exposed
         hidden[:, 2] = 1.0 - 2 * self.i0 # susceptible0
+        #hidden[:, 1] = 0.0      # recovered
         p = hidden.clone()  # init previous state
         outputs = []
         hiddens = []

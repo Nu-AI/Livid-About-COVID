@@ -70,7 +70,7 @@ def get_arrays(dict, scenario_list, population):
     return data_list, day_list
 
 
-def plot_data(data_list, day_list, legend_list, gridplot):
+def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None):
 
 
     # Plotting parameters
@@ -132,6 +132,9 @@ def plot_data(data_list, day_list, legend_list, gridplot):
                      color=color_list[i], linewidth=linewidth)
             plt.plot(day_arr[0:max_days], data_arr[1][0:max_days], label=label_string2,
                      color=color_list[i], linewidth=linewidth)
+
+        if gt_arr is not None:
+            plt.plot(day_arr, gt_arr)
 
         plt.xlabel(xlabel, **sp_label_font, labelpad=x_labelpad)
         plt.ylabel(ylabel, **sp_label_font, labelpad=y_labelpad)
