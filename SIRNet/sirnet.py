@@ -114,9 +114,6 @@ class SEIRNet(torch.nn.Module):
         self.p = Parameter(torch.from_numpy( np.asarray([2.5]).astype(np.float32)).reshape((1, 1)))
         self.i0 = i0
 
-        if not update_k:
-            self.k.requires_grad = False
-
         if b_lstm:
             self.i2b = torch.nn.LSTM(input_size, 1, bias=False)
         else:

@@ -113,14 +113,12 @@ for county_data in counties:
         data.append(mobility[k] + [cases[k]])  # total cases
 
     # Estimate hospitalization rate
-    p = []
-    df = pd.read_csv(os.path.join(ROOT_DIR, 'data', 'US_County_AgeGrp_2018.csv', encoding="cp1252")
-#     df = pd.read_csv(
-#         os.path.join('US_County_AgeGrp_2018.csv'),
-#         encoding="cp1252")
-    print(df.keys())
-    a = df.loc[df['STNAME'] == 'Texas'].loc[df['CTYNAME'] == ' County']
-    print(a)
+    p =[]
+
+    df = pd.read_csv(os.path.join(ROOT_DIR, 'data','US_County_AgeGrp_2018.csv'),encoding = "cp1252")
+    print (df.keys())
+    a = df.loc[df['STNAME'] == 'Texas'].loc[df['CTYNAME'] == 'Bexar County']
+    print (a)
     key_list = []
     for keys in a.keys():
         key_list.append(keys)
