@@ -12,6 +12,9 @@ Hospitals-By-Beds.csv
 model.png
 scripts_local/
 data_local/
+zach_data/
+mobility_pdfs/
+notebooks/*.csv
 /notes/
 
 # Byte-compiled / optimized / DLL files
