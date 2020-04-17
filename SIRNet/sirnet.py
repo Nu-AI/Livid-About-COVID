@@ -156,8 +156,11 @@ class SEIRNet(torch.nn.Module):
             if self.b_lstm:
                 b_inter, (h_t, c_t) = self.i2l(X[None, t], (h_t, c_t))
                 # TODO No negative contact rates...
+                # TODO: pytorch does not have LSTM option to change tanh to relu
+                #  this is dumb and needs fixing here for valid b...
+                b = self.l2b(b_inter.squeeze(dim=1))
                 # b = torch.clamp(self.l2b(b_inter.squeeze(dim=1)), 0)
-                b = torch.sigmoid(self.l2b(b_inter.squeeze(dim=1)))
+                b = torch.relu(self.l2b(b_inter.squeeze(dim=1)))
                 b = b.squeeze()
             else:
                 #b = torch.clamp( torch.exp(self.i2b(X[t]**2)), 0) # predicting the log of the contact rate as a linear combination of mobility squared

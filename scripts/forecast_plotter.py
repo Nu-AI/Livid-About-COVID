@@ -143,7 +143,6 @@ def plot_data(data_list, day_list, legend_list, gridplot):
         plt.legend(prop={'size': legend_size, 'weight': 'bold'})
         plt.margins(0)
         manager = plt.get_current_fig_manager()
-        manager.resize(*manager.window.maxsize())
         plot_backend = mpl.get_backend()
         if plot_backend == 'TkAgg':
             manager.resize(*manager.window.maxsize())

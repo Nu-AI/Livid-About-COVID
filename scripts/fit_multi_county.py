@@ -16,15 +16,17 @@ from torch import optim
 # root of workspace
 ROOT_DIR = os.path.join(os.path.dirname(__file__), '..')
 sys.path.append(ROOT_DIR)
-# import SIRNet
 from SIRNet import sirnet
+from scripts import forecast_plotter as fp
 
-## Assumptions: Let's put these properties right up front where they belong ###
+## ASSUMPTIONS: Let's put these properties right up front where they belong ###
 ###############################################################################
+# @formatter:off
 reporting_rate = 0.20  # Portion of cases that are actually detected
-delay_days = 4  # Days between becoming infected / positive confirmation (due to incubation period / testing latency
-bed_pct = 0.40  # Portion of hospital beds that can be allocated for Covid-19 patients
-hosp_rate = 0.20  # Portion of cases that result in hospitalization
+delay_days = 4         # Days between becoming infected / positive confirmation (due to incubation period / testing latency
+bed_pct = 0.40         # Portion of hospital beds that can be allocated for Covid-19 patients
+hosp_rate = 0.20       # Portion of cases that result in hospitalization
+# @formatter:on
 
 # Download latest data
 import urllib.request
@@ -39,12 +41,11 @@ if not os.path.exists('us-counties.csv'):
 
 # Determine the 5 biggest county case rates in these 5 states:
 # NY, NJ, CA, MI, PA, TX
-counties = []
-# counties.append(['New York City', 'New York', 8.0e6, 32000])
-# counties.append(['New York', 'New York', 8.0e6, 32000])
-counties.append(['Bexar', 'Texas', 1.99e6,
-                 7793])  # county, state, population, hospital beds
-
+counties = [
+    # county, state, population, hospital beds
+    # ['New York City', 'New York', 8.0e6, 32000],
+    ['Bexar', 'Texas', 1.99e6, 7793],
+]
 ## Iterate through counties ##
 ##############################
 for county_data in counties:
@@ -58,7 +59,7 @@ for county_data in counties:
     with open('us-counties.csv', 'r') as f:
         csv_reader = csv.reader(f, delimiter=',')
         for row in csv_reader:
-            if (row[1] == county_name and row[2] == state_name):
+            if row[1] == county_name and row[2] == state_name:
                 cases[row[0]] = row[4]  # cases by date
 
     # Shift case data assuming it lags actual by 10 days
@@ -84,9 +85,9 @@ for county_data in counties:
                 csv_reader = csv.reader(f, delimiter=',')
                 header = next(csv_reader)
                 for row in csv_reader:
-                    if row[1] == state_name and row[2].replace(' County',
-                                                               '') == county_name and \
-                            row[3] == category:
+                    if (row[1] == state_name and
+                            row[2].replace(' County', '') == county_name and
+                            row[3] == category):
                         dates = eval(row[6])
                         vals = eval(row[7])
                         for i, date in enumerate(dates):
@@ -103,8 +104,8 @@ for county_data in counties:
                 csv_reader = csv.reader(f, delimiter=',')
                 header = next(csv_reader)
                 for row in csv_reader:
-                    if row[1] == 'US' and row[2] == state_name and row[
-                        3] == category:
+                    if (row[1] == 'US' and row[2] == state_name and
+                            row[3] == category):
                         dates = eval(row[6])
                         vals = eval(row[7])
                         for i, date in enumerate(dates):
@@ -118,10 +119,8 @@ for county_data in counties:
     # Common Case Data + Activity Data Dates
     data = []
     common_dates = []
-    print('cases.keys()', cases.keys())
     for k in cases.keys():
         if k not in mobility.keys():
-            print(k, 'not in', mobility.keys())
             continue
         data.append(mobility[k] + [cases[k]])  # total cases
 
@@ -129,16 +128,16 @@ for county_data in counties:
     p = []
     df = pd.read_csv(
         os.path.join(ROOT_DIR, 'data', 'US_County_AgeGrp_2018.csv'),
-        encoding="cp1252")
-    print(df.keys())
+        encoding="cp1252"
+    )
     a = df.loc[(df['STNAME'] == state_name) &
                (df['CTYNAME'] == county_name + ' County')]
-    print(a)
     key_list = []
     for keys in a.keys():
         key_list.append(keys)
     print(key_list)
 
+    # TODO: comment these (or make more efficient via pandas)
     p0_19 = 0
     p20_44 = 0
     p45_64 = 0
@@ -163,7 +162,6 @@ for county_data in counties:
     rates = []
 
     hr_filename = os.path.join(ROOT_DIR, 'data', 'covid_hosp_rate_by_age.csv')
-    # hr_filename = os.path.join('covid_hosp_rate_by_age.csv')
     with open(hr_filename, 'r', encoding='mac_roman') as f:
         csv_reader = csv.reader(f, delimiter=',')
         header = next(csv_reader)
@@ -191,7 +189,8 @@ for county_data in counties:
     #             p = [p0_19, p20_44, p45_64, p65_74, p75_84, p85_p]
     #             print (p, "******************")
     #     rates = []
-    #     with open('covid_hosp_rate_by_age.csv', 'r', encoding='mac_roman') as f:
+    #     with open('covid_hosp_rate_by_age.csv', 'r',
+    #               encoding='mac_roman') as f:
     #         csv_reader = csv.reader(f, delimiter=',')
     #         header = next(csv_reader)
     #         for row in csv_reader:
@@ -199,24 +198,26 @@ for county_data in counties:
     #     if not p:
     #         print ("p is empty")
     #     else:
-    #         hosp_rate = np.sum(np.array(p).astype(float) * np.mean(np.array(rates).astype(float),axis=0))
+    #         hosp_rate = (np.sum(np.array(p).astype(float) *
+    #                             np.mean(np.array(rates).astype(float),axis=0)))
 
     # hosp_rate = 0.20
 
     ###################### Formatting Data ######################
     #############################################################
-
-    print('data', data)
-    data = np.asarray(data).astype(
-        float)  # Data is 6 columns of mobility, 1 column of case number
+    # Data is 6 columns of mobility, 1 column of case number
+    data = np.asarray(data).astype(float)
     data = data[5:, :]  # Skip 5 days until we have 10+ patients
 
-    data[:, :6] = (1.0 + data[:, :6] / 100.0)  # convert percentages of change to fractions of activity
+    data[:, :6] = (
+            1.0 + data[:, :6] / 100.0
+    )  # convert percentages of change to fractions of activity
     print(np.asarray(data).shape)
 
     # Split into input and output data
     X, Y = data[:, :6], data[:, 6]
-    # X is now retail&rec, grocery&pharm, parks, transit_stations, workplace, residential
+    # X is now retail&rec, grocery&pharm, parks, transit_stations, workplace,
+    #   residential
     # Y is the total number of cases
     plt.plot(Y)
     plt.show()
@@ -241,15 +242,17 @@ for county_data in counties:
         return model
 
 
-    def train(model, loss, optimizer, x, y):
+    def train(model, loss, optimizer, x, y, log_transform=True):
         x = Variable(x, requires_grad=False)
         y = Variable(y, requires_grad=False)
         optimizer.zero_grad()
 
         hx, fx = model.forward(x)
 
-        # output = loss.forward(fx, y)
-        output = loss.forward(torch.log(fx), torch.log(y))
+        if log_transform:
+            output = loss.forward(torch.log(fx), torch.log(y))
+        else:
+            output = loss.forward(fx, y)
         output.backward()
         optimizer.step()
         # for name, param in model.named_parameters():
@@ -314,8 +317,8 @@ for county_data in counties:
     plt.legend(pcs, ['Ground Truth', 'Predicted'])
     plt.show()
 
-    ######## Forecast mobility from 0 to 100 % ######################################
-    #################################################################################
+    ######## Forecast mobility from 0 to 100 % #################################
+    ############################################################################
     for i in range(0, 101, 10):
         p = i / 100.0
         # xN = torch.Tensor(np.ones((1, 6)).astype(np.float32)) * p + X[-1, :, :] * (1-p)
@@ -339,16 +342,17 @@ for county_data in counties:
         active = s[:, 0] * reporting_rate * population
         total = (s[:, 0] + s[:, 1]) * reporting_rate * population
         hospitalized = s[:, 0] * float(hosp_rate) * reporting_rate * population
-        total_deaths = s[:, 1] * 0.034 * reporting_rate * population  # recovered * WHO mortality rate (recovered is actually recovered + deceased)
+        # recovered * WHO mortality rate
+        #   (recovered is actually recovered + deceased)
+        total_deaths = s[:, 1] * 0.034 * reporting_rate * population
         print('HTF? ', s[-1, 1], 0.034, reporting_rate, population)
 
         fig, axs = plt.subplots(2)
         axs[0].plot(days, active, 'b', days, total, 'r')
         axs[0].legend(['Active', 'Total'], loc='upper left')
         axs[0].set(ylabel='Cases')
-        axs[0].set_title(
-            'Quarantine/Normal: {:02d}/{:02d} | Avg. Mobility: {:02d}%'.format(
-                100 - i, i, pct))
+        axs[0].set_title('Quarantine/Normal: {:02d}/{:02d} | '
+                         'Avg. Mobility: {:02d}%'.format(100 - i, i, pct))
         axs[0].set_xticklabels([])
 
         axs[1].plot(days, hospitalized, 'b', days, total_deaths, 'k', days,
@@ -365,8 +369,8 @@ for county_data in counties:
         plt.show()
         plt.close()
 
-    ######## Forecast 200 more days at current quarantine mobility ##################
-    #################################################################################
+    ######## Forecast 200 more days at current quarantine mobility #############
+    ############################################################################
     xN = X[-1, :, :]  # lockdown
     xN[0, :] = torch.Tensor(
         np.array([.1, .1, .1, .1, .1, 3]).astype(np.float32))
@@ -385,8 +389,8 @@ for county_data in counties:
     plt.title('SIR_state (lockdown mobility)')
     plt.show()
 
-    ######## Forecast 120 more days returning to normal mobility ####################
-    #################################################################################
+    ######## Forecast 120 more days returning to normal mobility ###############
+    ############################################################################
     xN = torch.Tensor(np.ones((1, 6)).astype(np.float32))
     rX = torch.stack([xN.clone() for i in range(200)])
     rX = torch.cat((X, rX), axis=0)
@@ -403,8 +407,8 @@ for county_data in counties:
     plt.title('SIR_state (full mobility)')
     plt.show()
 
-    ######## Forecast 120 more days at half-return to normal mobility ###############
-    #################################################################################
+    ######## Forecast 120 more days at half-return to normal mobility ##########
+    ############################################################################
     xN = (torch.Tensor(np.ones((1, 6)).astype(np.float32)) + X[-1, :, :]) / 2
     rX = torch.stack([xN.clone() for i in range(200)])  # 80 x 1 x 6
     rX = torch.cat((X, rX), axis=0)
@@ -421,10 +425,10 @@ for county_data in counties:
     plt.title('SIR_state (split mobility)')
     plt.show()
 
-    ######## Forecast 120 more days at 25%-return to normal mobility ###############
-    #################################################################################
-    xN = torch.Tensor(np.ones((1, 6)).astype(np.float32)) * .20 + X[-1, :,
-                                                                  :] * .80
+    ######## Forecast 120 more days at 25%-return to normal mobility ###########
+    ############################################################################
+    xN = (torch.Tensor(np.ones((1, 6)).astype(np.float32)) * .20 +
+          X[-1, :, :] * .80)
     rX = torch.stack([xN.clone() for i in range(200)])  # 80 x 1 x 6
     rX = torch.cat((X, rX), axis=0)
 
@@ -466,21 +470,20 @@ for county_data in counties:
     cases = ['Current Mobility', 'Return to Normal Mobility',
              '50% Return to Normal', '20% Return to Normal']
     for i, s in enumerate([sir_state1, sir_state2, sir_state3, sir_state4]):
-        data = {}
-        data['Days'] = np.array(days)
-        data['Active Cases (latent)'] = s[:, 0]
-        data['Active Cases (observed)'] = s[:, 0] * reporting_rate
-        data['Total Cases (latent)'] = s[:, 0] + s[:, 1]  # infected + recovered
-        data['Total Cases (observed)'] = (s[:, 0] + s[:, 1]) * reporting_rate
-        data['Hospitalized'] = s[:, 0] * hosp_rate * reporting_rate
-        data['Total Deaths'] = s[:,
-                               1] * 0.034 * reporting_rate  # recovered * WHO mortality rate (recovered is actually recovered + deceased)
+        data = {
+            'Days': np.array(days), 'Active Cases (latent)': s[:, 0],
+            'Active Cases (observed)': s[:, 0] * reporting_rate,
+            'Total Cases (latent)': s[:, 0] + s[:, 1],
+            'Total Cases (observed)': (s[:, 0] + s[:, 1]) * reporting_rate,
+            'Hospitalized': s[:, 0] * hosp_rate * reporting_rate,
+            # recovered * WHO mortality rate
+            #   (recovered is actually recovered + deceased)
+            'Total Deaths': s[:, 1] * 0.034 * reporting_rate
+        }
         # Alternative way to save
         # str = 'Average Case ' + str(cases[i]) + str(county_name) + '.npy'
         # np.save(str, data)
         np.save('Average Case {}.npy'.format(cases[i]), data)
-
-from scripts import forecast_plotter as fp
 
 legend_list = ['Current Mobility', '20% Mobility', '50% Mobility',
                'Normal Mobility']
