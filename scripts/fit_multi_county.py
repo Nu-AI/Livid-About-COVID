@@ -40,8 +40,10 @@ if not os.path.exists('us-counties.csv'):
 # Determine the 5 biggest county case rates in these 5 states:
 # NY, NJ, CA, MI, PA, TX
 counties = []
+counties.append(['King', 'Washington', 2.25e6, 8000])
+#counties.append(['Harris','Texas', 4.7e6, 12000])
 #counties.append(['New York City', 'New York', 8.0e6, 32000])
-counties.append(['Bexar', 'Texas', 1.99e6, 7793])  # county, state, population, hospital beds
+#counties.append(['Bexar', 'Texas', 1.99e6, 7793])  # county, state, population, hospital beds
 
 ## Iterate through counties ##
 ##############################
@@ -193,6 +195,7 @@ for county_data in counties:
 
     data = np.asarray(data).astype(float)  # Data is 6 columns of mobility, 1 column of case number
     data = data[5:, :]  # Skip 5 days until we have 10+ patients
+    #data[:,5] = 0.0 # residential factored out
 
     data[:, :6] = (1.0 + data[:, :6] / 100.0)  # convert percentages of change to fractions of activity
     print(np.asarray(data).shape)
@@ -229,8 +232,8 @@ for county_data in counties:
         optimizer.zero_grad()
 
         hx, fx = model.forward(x) 
-        #output = loss.forward(fx, y)
-        output = loss.forward(torch.log(fx), torch.log(y) )
+        output = loss.forward(fx, y)
+        #output = loss.forward(torch.log(fx), torch.log(y) )
         output.backward()
         optimizer.step()
         for name, param in model.named_parameters():
@@ -256,7 +259,7 @@ for county_data in counties:
         iters = 1000
     else:
         model.load_state_dict(torch.load(weights_name))
-        iters = 10000
+        iters = 10
 
     for i in range(iters):
         cost = 0.
@@ -344,8 +347,8 @@ for county_data in counties:
 
     ######## Forecast 200 more days at current quarantine mobility ##################
     #################################################################################
-    xN = X[-1, :, :]   # lockdown
-    xN[0,:] = torch.Tensor(np.array([.1, .1, .1, .1, .1, 3]).astype(np.float32))
+    xN = X[-1, :, :]   # 20%
+    xN[0,:] = torch.Tensor(np.ones((1, 6)).astype(np.float32)) * .20
     qX = torch.stack([xN.clone() for i in range(200)])  # 200 x 1 x 6
     qX = torch.cat((X, qX), axis=0)
 
@@ -379,9 +382,9 @@ for county_data in counties:
     plt.title('SIR_state (full mobility)')
     plt.show()
 
-    ######## Forecast 120 more days at half-return to normal mobility ###############
+    ######## Forecast 120 more days at 50% normal mobility ###############
     #################################################################################
-    xN = (torch.Tensor(np.ones((1, 6)).astype(np.float32)) + X[-1, :, :]) / 2
+    xN = torch.Tensor(np.ones((1, 6)).astype(np.float32)) * .50
     rX = torch.stack([xN.clone() for i in range(200)])  # 80 x 1 x 6
     rX = torch.cat((X, rX), axis=0)
 
@@ -399,7 +402,7 @@ for county_data in counties:
 
     ######## Forecast 120 more days at 25%-return to normal mobility ###############
     #################################################################################
-    xN = torch.Tensor(np.ones((1, 6)).astype(np.float32)) * .20 + X[-1, :, :] * .80
+    xN = torch.Tensor(np.ones((1, 6)).astype(np.float32)) * .75
     rX = torch.stack([xN.clone() for i in range(200)])  # 80 x 1 x 6
     rX = torch.cat((X, rX), axis=0)
 
@@ -437,7 +440,7 @@ for county_data in counties:
     plt.show()
 
     # Save the data
-    cases = ['Current Mobility', 'Return to Normal Mobility', '50% Return to Normal', '20% Return to Normal']
+    cases = ['20% Mobility', 'Normal Mobility', '50% Mobility', '75% Mobility']
     for i, s in enumerate([sir_state1, sir_state2, sir_state3, sir_state4]):
         data = {}
         data['Days'] = np.array(days)
@@ -456,7 +459,7 @@ for county_data in counties:
 
 import forecast_plotter as fp
 
-legend_list = ['Current Mobility', '20% Mobility', '50% Mobility', 'Normal Mobility']
+legend_list = ['20% Mobility', '50% Mobility', '75% Mobility', 'Normal Mobility']
 data_list, day_list = fp.get_arrays(fp.get_scenario_dict(fp.scenario_list), fp.scenario_list, fp.population)
 fp.plot_data(data_list, day_list,legend_list, 0)
 

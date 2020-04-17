@@ -13,6 +13,7 @@ pd.set_option('display.max_rows', None)
 pd.set_option('display.max_colwidth', -1)
 
 scenario_list = ['Current Mobility', '20% Return to Normal', '50% Return to Normal', 'Return to Normal Mobility']
+scenario_list = ['20% Mobility', 'Normal Mobility', '50% Mobility', '75% Mobility']
 
 def get_predictions(path):
     return np.load(path, allow_pickle=True)
