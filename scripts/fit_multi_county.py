@@ -21,7 +21,7 @@ from SIRNet import sirnet
 
 ## Assumptions: Let's put these properties right up front where they belong ###
 ###############################################################################
-reporting_rate = 0.20  # Portion of cases that are actually detected
+reporting_rate = 0.60  # Portion of cases that are actually detected
 delay_days = 4  # Days between becoming infected / positive confirmation (due to incubation period / testing latency
 bed_pct = 0.40  # Portion of hospital beds that can be allocated for Covid-19 patients
 hosp_rate = 0.20  # Portion of cases that result in hospitalization
@@ -40,7 +40,7 @@ if not os.path.exists('us-counties.csv'):
 # Determine the 5 biggest county case rates in these 5 states:
 # NY, NJ, CA, MI, PA, TX
 counties = []
-counties.append(['New York City', 'New York', 8.0e6, 32000])
+#counties.append(['New York City', 'New York', 8.0e6, 32000])
 counties.append(['Bexar', 'Texas', 1.99e6, 7793])  # county, state, population, hospital beds
 
 ## Iterate through counties ##
@@ -228,15 +228,14 @@ for county_data in counties:
         y = Variable(y, requires_grad=False)
         optimizer.zero_grad()
 
-        hx, fx = model.forward(x)
-
+        hx, fx = model.forward(x) 
         #output = loss.forward(fx, y)
         output = loss.forward(torch.log(fx), torch.log(y) )
         output.backward()
         optimizer.step()
-        #for name, param in model.named_parameters():
-        #    if name != "name.h2o.weight":
-        #        param.data.clamp_(1e-4)
+        for name, param in model.named_parameters():
+            if name != "name.h2o.weight":
+                param.data.clamp_(1e-4)
         return output.data.item()
 
 
@@ -257,7 +256,7 @@ for county_data in counties:
         iters = 1000
     else:
         model.load_state_dict(torch.load(weights_name))
-        iters = 1000
+        iters = 10000
 
     for i in range(iters):
         cost = 0.
@@ -298,7 +297,7 @@ for county_data in counties:
 
     ######## Forecast mobility from 0 to 100 % ######################################
     #################################################################################
-    for i in range(0,101,10):
+    for i in range(40,101,2):
       p = i / 100.0
       #xN = torch.Tensor(np.ones((1, 6)).astype(np.float32)) * p + X[-1, :, :] * (1-p)
       xN = torch.Tensor(np.ones((1, 6)).astype(np.float32)) * p
@@ -321,8 +320,7 @@ for county_data in counties:
       active = s[:, 0] * reporting_rate * population
       total = (s[:, 0] + s[:, 1]) * reporting_rate * population
       hospitalized = s[:, 0] * float(hosp_rate) * reporting_rate * population
-      total_deaths = s[:, 1] * 0.034 * reporting_rate * population  # recovered * WHO mortality rate (recovered is actually recovered + deceased)
-      print ('HTF? ', s[-1,1], 0.034, reporting_rate, population)
+      total_deaths = s[:, 1] * 0.06 * reporting_rate * population  # recovered * WHO mortality rate (recovered is actually recovered + deceased)
 
       fig, axs = plt.subplots(2)
       axs[0].plot(days, active, 'b', days, total, 'r')
@@ -338,8 +336,8 @@ for county_data in counties:
       axs[1].set_xticks(range(0,211,30))
       axs[1].set_xticklabels(['March', 'April', 'May', 'June', 'July', 'Aug', 'Sept', 'Oct'])
 
-      #plt.savefig('output/mobility{:03d}.png'.format(i))
-      plt.show()
+      plt.savefig('output/mobility{:03d}.png'.format(i))
+      #plt.show()
       plt.close()
 
 
