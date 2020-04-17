@@ -19,6 +19,9 @@ ROOT_DIR = os.path.join(os.path.dirname(__file__), '..')
 sys.path.append(ROOT_DIR)
 # directory of data
 DATA_DIR = os.path.join(ROOT_DIR, 'data')
+WEIGHTS_DIR = os.path.join(ROOT_DIR, 'model_weights')
+RESULTS_DIR = os.path.join(ROOT_DIR, 'Prediction_results')
+
 import SIRNet
 from SIRNet import util
 from SIRNet import forecast_plotter as fp
@@ -347,7 +350,7 @@ for county_data in counties:
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=4000, gamma=0.1)
     batch_size = Y.shape[0]
     torch.autograd.set_detect_anomaly(True)
-    weights_name = '{}_weights.pt'.format(county_name)
+    weights_name = os.path.join(WEIGHTS_DIR,'{}_weights.pt'.format(county_name))
 
     if not os.path.exists(weights_name):
         iters = 1000
@@ -527,13 +530,14 @@ for county_data in counties:
             'Total Deaths': s[:, 1] * 0.034 * reporting_rate
         }
         # Alternative way to save
+        string  = str(cases[i]) + str(county_name)
         # str = 'Average Case ' + str(cases[i]) + str(county_name) + '.npy'
         # np.save(str, data)
-        np.save('Average Case {}.npy'.format(cases[i]), data)
+        np.save(os.path.join(RESULTS_DIR,'Average Case {}.npy'.format(string)), data)
 
 legend_list = ['Current Mobility', '20% Mobility', '50% Mobility',
                'Normal Mobility']
 data_list, day_list = fp.get_arrays(fp.get_scenario_dict(fp.scenario_list),
-                                    fp.scenario_list, fp.population)
+                                    fp.scenario_list, population)
 fp.plot_data(data_list, day_list, legend_list, 0)
 fp.plot_data(data_list, day_list, legend_list, 1)
