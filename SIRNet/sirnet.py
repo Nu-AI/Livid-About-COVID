@@ -6,8 +6,8 @@ from torch.nn.parameter import Parameter
 ###################### Defining Model #######################
 #############################################################
 class SIRNet(torch.nn.Module):
-    def __init__(self, input_size=6, i0=5.6e-6, update_k=True, hidden_size=3, output_size=1,
-                 b_lstm=False):
+    def __init__(self, input_size=6, i0=5.6e-6, update_k=True, hidden_size=3,
+                 output_size=1, b_lstm=False):
         super(SIRNet, self).__init__()
 
         assert input_size == 6, 'Input dimension must be 6'  # for now
@@ -21,7 +21,8 @@ class SIRNet(torch.nn.Module):
 
         # Initializations (from prior training)
         b_init = torch.from_numpy(np.asarray(
-            [7.3690e-02, 1.0000e-04, 1.0000e-04, 6.5169e-02, 1.4331e-01, 2.9631e-03]
+            [7.3690e-02, 1.0000e-04, 1.0000e-04, 6.5169e-02, 1.4331e-01,
+             2.9631e-03]
         ).astype(np.float32)).reshape((1, input_size))
         k_init = torch.from_numpy(
             np.asarray([.09]).astype(np.float32)).reshape((1, 1))
@@ -85,7 +86,6 @@ class SIRNet(torch.nn.Module):
 
 ###################### Defining Model #######################
 #############################################################
-# noinspection PyArgumentList,PyUnresolvedReferences
 class SEIRNet(torch.nn.Module):
     def __init__(self, input_size=6, i0=5.6e-6, update_k=True, hidden_size=4,
                  output_size=1, b_lstm=False, lstm_hidden_size=6):
@@ -143,8 +143,8 @@ class SEIRNet(torch.nn.Module):
             batch_size, self.hidden_size
         ).to(device=X.device)  # hidden state is i,r,s,e
         hidden[:, 0] = self.i0  # initial infected
-        hidden[:, 2] = 1.0 - 2 * self.i0  # susceptible0
         hidden[:  3] = self.i0  # initial exposed
+        hidden[:, 2] = 1.0 - 2 * self.i0  # susceptible0
         p = hidden.clone()  # init previous state
         outputs = []
         hiddens = []
