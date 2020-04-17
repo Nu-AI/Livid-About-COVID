@@ -1,14 +1,17 @@
 Hospitals-By-Beds.csv
 
+# Generated weights
+*.pt
+
 # Ignore root directory files
 /*.csv
-/*.pt
 /*.npy
 
 # Local & generated files
 .idea/
 model.png
 scripts_local/
+data_local/
 /notes/
 
 # Byte-compiled / optimized / DLL files
