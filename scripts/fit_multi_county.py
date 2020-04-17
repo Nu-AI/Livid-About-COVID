@@ -114,7 +114,7 @@ for county_data in counties:
 
     # Estimate hospitalization rate
     p = []
-    df = pd.read_csv(os.path.join(ROOT_DIR, 'data', 'US_County_AgeGrp_2018.csv', encoding="cp1252")
+    df = pd.read_csv(os.path.join(ROOT_DIR, 'data', 'US_County_AgeGrp_2018.csv', encoding="cp1252"))
 #     df = pd.read_csv(
 #         os.path.join('US_County_AgeGrp_2018.csv'),
 #         encoding="cp1252")
@@ -458,7 +458,7 @@ for county_data in counties:
 
 
 
-import forecast_plotter as fp
+from . import forecast_plotter as fp
 
 legend_list = ['Current Mobility', '20% Mobility', '50% Mobility', 'Normal Mobility']
 data_list, day_list = fp.get_arrays(fp.get_scenario_dict(fp.scenario_list), fp.scenario_list, fp.population)
