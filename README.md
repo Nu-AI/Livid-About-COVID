@@ -41,7 +41,6 @@ available in the `notebooks` directory.
 
 Sample results (preliminary) for Bexar County, TX, USA.
 
-<img src="images/bexar_county_covid_forecast.png" width="500px" />
 
 ## Types of Data
 1. Confirmed Cases
