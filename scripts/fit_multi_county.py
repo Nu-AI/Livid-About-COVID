@@ -359,7 +359,7 @@ for county_data in counties:
     plt.title('Cases')
     plt.xlabel('Day')
     plt.ylabel('Cases')
-    pcs = plt.plot(range(Y.shape[0]), np.squeeze(np.array(Y)), 'r',
+    pcs = plt.plot(range(Y.shape[0]), util.to_numpy(Y), 'r',
                    range(Y.shape[0]), YY, 'g')
     plt.legend(pcs, ['Ground Truth', 'Predicted'])
     plt.show()
