@@ -112,7 +112,10 @@ class SEIRNet(torch.nn.Module):
         self.k = .20 #Parameter(k_init)  # gamma - 5 day (3-7 day) average duration of infection:	Woelfel et al
         self.s = .20 #Parameter(s_init)  # sigma - 5 day incubation period (	Backer et al )
         self.p = Parameter(torch.from_numpy( np.asarray([2.5]).astype(np.float32)).reshape((1, 1)))
+        self.q = Parameter(torch.from_numpy( np.asarray([0.2]).astype(np.float32)).reshape((1, 1)))
         self.i0 = i0
+
+        #self.p.requires_grad = False
 
         if b_lstm:
             self.i2b = torch.nn.LSTM(input_size, 1, bias=False)
@@ -134,7 +137,7 @@ class SEIRNet(torch.nn.Module):
             torch.zeros(batch_size, self.hidden_size)
         ).to(device=X.device)  # hidden state is i,r,s
         hidden[:, 0] = self.i0  # initial infected
-        hidden[:  3] = self.i0  # initial exposed
+        hidden[:, 3] = self.i0  # initial exposed
         hidden[:, 2] = 1.0 - 2 * self.i0 # susceptible0
         p = hidden.clone()  # init previous state
         outputs = []
@@ -152,7 +155,8 @@ class SEIRNet(torch.nn.Module):
                 #b = torch.clamp( torch.exp(self.i2b(X[t]**2)), 0) # predicting the log of the contact rate as a linear combination of mobility squared
                 #b = 2.2 # should be the value of b under normal mobility.  Kucharski et al
                 #b = 2.2 * torch.sigmoid(self.i2b(X[t]**3)) # would max out b at 2.2- maybe not a good idea
-                b = torch.clamp( self.i2b(X[t]), 0) ** self.p
+                #b = torch.clamp( self.i2b(X[t]), 0) ** self.p
+                b = self.q * torch.norm(X[t,0,:5]) ** self.p
 
             # update the hidden state SIR model (states are I R S E)
             d1 = self.k * p[:, 0]       # gamma * I  (infected people recovering)

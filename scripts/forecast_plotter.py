@@ -140,7 +140,7 @@ def plot_data(data_list, day_list, legend_list, gridplot):
                    **tick_font)
         if (log_scale):
             plt.yscale('log')
-        plt.yticks(np.arange(0, 1000000, 200000), [0, 200, 400, 600, 800], **tick_font)
+        #plt.yticks(np.arange(0, 1000000, 200000), [0, 200, 400, 600, 800], **tick_font)
         plt.legend(prop={'size': legend_size, 'weight': 'bold'})
         plt.margins(0)
         manager = plt.get_current_fig_manager()

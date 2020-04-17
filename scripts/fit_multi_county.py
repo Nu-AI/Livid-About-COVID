@@ -22,7 +22,7 @@ from SIRNet import sirnet
 ## Assumptions: Let's put these properties right up front where they belong ###
 ###############################################################################
 reporting_rate = 0.60  # Portion of cases that are actually detected
-delay_days = 4  # Days between becoming infected / positive confirmation (due to incubation period / testing latency
+delay_days = 3  # Days between becoming infected / positive confirmation (due to incubation period / testing latency
 bed_pct = 0.40  # Portion of hospital beds that can be allocated for Covid-19 patients
 hosp_rate = 0.20  # Portion of cases that result in hospitalization
 
@@ -194,17 +194,28 @@ for county_data in counties:
     #############################################################
 
     data = np.asarray(data).astype(float)  # Data is 6 columns of mobility, 1 column of case number
-    data = data[5:, :]  # Skip 5 days until we have 10+ patients
+    #data = data[5:, :]  # Skip 5 days until we have 10+ patients
     #data[:,5] = 0.0 # residential factored out
+    data = data[10:,:] # Start us at Day 10
+    
 
     data[:, :6] = (1.0 + data[:, :6] / 100.0)  # convert percentages of change to fractions of activity
     print(np.asarray(data).shape)
+    print ('Initial mobility', data[0,:])
 
     # Split into input and output data
     X, Y = data[:, :6], data[:, 6]
     # X is now retail&rec, grocery&pharm, parks, transit_stations, workplace, residential
     # Y is the total number of cases
     plt.plot(Y);
+    plt.xlabel('Day')
+    plt.ylabel('Total cases')
+    plt.show()
+
+    mag = [np.linalg.norm(X[t,:5]) for t in range(X.shape[0]) ]
+    plt.plot(mag)
+    plt.xlabel('Day')
+    plt.ylabel('Activity')
     plt.show()
 
     # divide out population of county
@@ -259,7 +270,7 @@ for county_data in counties:
         iters = 1000
     else:
         model.load_state_dict(torch.load(weights_name))
-        iters = 10
+        iters = 1000
 
     for i in range(iters):
         cost = 0.
@@ -459,7 +470,7 @@ for county_data in counties:
 
 import forecast_plotter as fp
 
-legend_list = ['20% Mobility', '50% Mobility', '75% Mobility', 'Normal Mobility']
+legend_list = ['20% Mobility', 'Normal Mobility', '50% Mobility', '75% Mobility']
 data_list, day_list = fp.get_arrays(fp.get_scenario_dict(fp.scenario_list), fp.scenario_list, fp.population)
 fp.plot_data(data_list, day_list,legend_list, 0)
 
