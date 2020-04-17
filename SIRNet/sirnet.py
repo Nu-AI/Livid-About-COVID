@@ -87,8 +87,8 @@ class SIRNet(torch.nn.Module):
 ###################### Defining Model #######################
 #############################################################
 class SEIRNet(torch.nn.Module):
-    def __init__(self, input_size=6, i0=5.6e-6, update_k=True, hidden_size=4, output_size=1,
-                 b_lstm=False):
+    def __init__(self, input_size=6, i0=5.6e-6, update_k=True, hidden_size=4,
+                 output_size=1, b_lstm=False, lstm_hidden_size=6):
         super(SEIRNet, self).__init__()
 
         assert input_size == 6, 'Input dimension must be 6'  # for now
@@ -99,6 +99,7 @@ class SEIRNet(torch.nn.Module):
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.b_lstm = b_lstm
+        self.lstm_hidden_size = lstm_hidden_size
 
         # Initializations (from prior training)
         b_init = torch.from_numpy(np.asarray(
@@ -109,17 +110,21 @@ class SEIRNet(torch.nn.Module):
         s_init = torch.from_numpy(
             np.asarray([.20]).astype(np.float32)).reshape((1, 1))
 
-        self.k = .20 #Parameter(k_init)  # gamma - 5 day (3-7 day) average duration of infection:	Woelfel et al
-        self.s = .20 #Parameter(s_init)  # sigma - 5 day incubation period (	Backer et al )
-        self.p = Parameter(torch.from_numpy( np.asarray([2.5]).astype(np.float32)).reshape((1, 1)))
+        self.k = .20  # Parameter(k_init)  # gamma - 5 day (3-7 day) average duration of infection:	Woelfel et al
+        self.s = .20  # Parameter(s_init)  # sigma - 5 day incubation period (	Backer et al )
         self.i0 = i0
 
-        if not update_k:
-            self.k.requires_grad = False
+        # if not update_k:  # TODO: disable for now as k is a float...
+        #     self.k.requires_grad = False
 
         if b_lstm:
-            self.i2b = torch.nn.LSTM(input_size, 1, bias=False)
+            print('\nb: Using LSTM\n')
+            self.i2l = torch.nn.LSTM(input_size, lstm_hidden_size)
+            self.l2b = torch.nn.Linear(lstm_hidden_size, 1)
         else:
+            self.p = Parameter(
+                torch.from_numpy(np.asarray([2.5]).astype(np.float32)).reshape(
+                    (1, 1)))
             self.i2b = torch.nn.Linear(input_size, 1, bias=False)
             self.i2b.weight.data = b_init
 
@@ -144,33 +149,37 @@ class SEIRNet(torch.nn.Module):
         hiddens = []
         if self.b_lstm:
             # LSTM states
-            h_t = torch.zeros(1, 1, 1)
-            c_t = torch.zeros(1, 1, 1)
+            h_t = torch.zeros(1, 1, self.lstm_hidden_size)
+            c_t = torch.zeros(1, 1, self.lstm_hidden_size)
         for t in range(time_steps):
             # contact rate as a function of our input vector
             if self.b_lstm:
-                b, (h_t, c_t) = self.i2b(X[None, t], (h_t, c_t))
+                b_inter, (h_t, c_t) = self.i2l(X[None, t], (h_t, c_t))
+                # TODO No negative contact rates...
+                # b = torch.clamp(self.l2b(b_inter.squeeze(dim=1)), 0)
+                b = torch.sigmoid(self.l2b(b_inter.squeeze(dim=1)))
                 b = b.squeeze()
             else:
                 #b = torch.clamp( torch.exp(self.i2b(X[t]**2)), 0) # predicting the log of the contact rate as a linear combination of mobility squared
                 #b = 2.2 # should be the value of b under normal mobility.  Kucharski et al
                 #b = 2.2 * torch.sigmoid(self.i2b(X[t]**3)) # would max out b at 2.2- maybe not a good idea
-                b = torch.clamp( self.i2b(X[t]), 0) ** self.p
+                b = torch.clamp(self.i2b(X[t]), 0) ** self.p  # best so far
+                # b = 2.2 - 2.2 * torch.tanh(self.i2b(X[t]))  # nope
+                # b = 2.2 - 2.2 * torch.tanh(self.i2b(X[t]) ** self.p)  # nope
 
             # update the hidden state SIR model (states are I R S E)
             d1 = self.k * p[:, 0]       # gamma * I  (infected people recovering)
             d2 = p[:, 0] * b * p[:, 2]  # b * s * i  (susceptible people becoming exposed)
-            d3 = self.s * p[:,3]        # sigma * e  (exposed people becoming infected)
+            d3 = self.s * p[:, 3]       # sigma * e  (exposed people becoming infected)
 
-
-            hidden[:, 3] = p[:, 3] + d2 - d3              # exposed = exposed + contact_rate * susceptible * infected - sigma * e
-            hidden[:, 0] = p[:, 0] + d3 - d1              # infected = infected + s * exposed - infected*recovery_rate
-            hidden[:, 1] = p[:, 1] + d1                   # recovered = recovered + infected*recovery_rate
-            hidden[:, 2] = p[:, 2] - d2                   # susceptible
+            hidden[:, 3] = p[:, 3] + d2 - d3  # exposed = exposed + contact_rate * susceptible * infected - sigma * e
+            hidden[:, 0] = p[:, 0] + d3 - d1  # infected = infected + s * exposed - infected*recovery_rate
+            hidden[:, 1] = p[:, 1] + d1       # recovered = recovered + infected*recovery_rate
+            hidden[:, 2] = p[:, 2] - d2       # susceptible
 
             # update the output
-            hidden = torch.clamp(hidden,0,1) # all states must be positive
-            
+            hidden = torch.clamp(hidden, 0, 1)  # all states must be positive
+
             p = hidden.clone()
             output = self.h2o(p)
             outputs.append(output)

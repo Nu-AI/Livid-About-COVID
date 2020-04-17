@@ -144,6 +144,13 @@ def plot_data(data_list, day_list, legend_list, gridplot):
         plt.margins(0)
         manager = plt.get_current_fig_manager()
         manager.resize(*manager.window.maxsize())
+        plot_backend = mpl.get_backend()
+        if plot_backend == 'TkAgg':
+            manager.resize(*manager.window.maxsize())
+        elif plot_backend == 'wxAgg':
+            manager.frame.Maximize(True)
+        elif plot_backend == 'Qt4Agg':
+            manager.window.showMaximized()
         # plt.tight_layout(pad=0.5)
         #plt.savefig("Bexar_total.pdf")
         plt.show()

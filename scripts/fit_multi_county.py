@@ -261,6 +261,7 @@ for county_data in counties:
     ##################### Build and Train Model #################
     #############################################################
     TRY_LSTM = False
+    # TRY_LSTM = True
     UPDATE_K = False
 
     model = build_model(i0, b_lstm=TRY_LSTM, update_k=UPDATE_K)
@@ -298,7 +299,7 @@ for county_data in counties:
     # Plot the SIR state
     sir_state = np.squeeze(sir_state.detach().numpy())
     pcs = plt.plot(sir_state)
-    plt.legend(['I', 'R', 'S'])
+    plt.legend(['E', 'I', 'R', 'S'])
     plt.xlabel('Day')
     plt.ylabel('Value')
     plt.title('SIR_state')
@@ -338,8 +339,7 @@ for county_data in counties:
         active = s[:, 0] * reporting_rate * population
         total = (s[:, 0] + s[:, 1]) * reporting_rate * population
         hospitalized = s[:, 0] * float(hosp_rate) * reporting_rate * population
-        total_deaths = s[:,
-                       1] * 0.034 * reporting_rate * population  # recovered * WHO mortality rate (recovered is actually recovered + deceased)
+        total_deaths = s[:, 1] * 0.034 * reporting_rate * population  # recovered * WHO mortality rate (recovered is actually recovered + deceased)
         print('HTF? ', s[-1, 1], 0.034, reporting_rate, population)
 
         fig, axs = plt.subplots(2)
@@ -379,7 +379,7 @@ for county_data in counties:
     # Plot the SIR state
     sir_state1 = np.squeeze(sir_state.detach().numpy())
     pcs = plt.plot(sir_state1)
-    plt.legend(['I', 'R', 'S'])
+    plt.legend(['E', 'I', 'R', 'S'])
     plt.xlabel('Day')
     plt.ylabel('Value')
     plt.title('SIR_state (lockdown mobility)')
@@ -397,7 +397,7 @@ for county_data in counties:
     # Plot the SIR state
     sir_state2 = np.squeeze(sir_state.detach().numpy())
     pcs = plt.plot(sir_state2)
-    plt.legend(['I', 'R', 'S'])
+    plt.legend(['E', 'I', 'R', 'S'])
     plt.xlabel('Day')
     plt.ylabel('Value')
     plt.title('SIR_state (full mobility)')
@@ -415,7 +415,7 @@ for county_data in counties:
     # Plot the SIR state
     sir_state3 = np.squeeze(sir_state.detach().numpy())
     pcs = plt.plot(sir_state3)
-    plt.legend(['I', 'R', 'S'])
+    plt.legend(['E', 'I', 'R', 'S'])
     plt.xlabel('Day')
     plt.ylabel('Value')
     plt.title('SIR_state (split mobility)')
@@ -434,7 +434,7 @@ for county_data in counties:
     # Plot the SIR state
     sir_state4 = np.squeeze(sir_state.detach().numpy())
     pcs = plt.plot(sir_state4)
-    plt.legend(['I', 'R', 'S'])
+    plt.legend(['E', 'I', 'R', 'S'])
     plt.xlabel('Day')
     plt.ylabel('Value')
     plt.title('SIR_state (split mobility)')
