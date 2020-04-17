@@ -1,23 +1,24 @@
-import numpy as np
-import pandas as pd
 import os
-from collections import OrderedDict
 import csv
 import sys
+from collections import OrderedDict
 
 import urllib.request
+
+import numpy as np
+import pandas as pd
 
 import matplotlib.pyplot as plt
 
 import torch
-from torch.autograd import Variable
 from torch import optim
 
 # root of workspace
 ROOT_DIR = os.path.join(os.path.dirname(__file__), '..')
 sys.path.append(ROOT_DIR)
-from SIRNet import sirnet
-from scripts import forecast_plotter as fp
+import SIRNet
+from SIRNet import util
+from SIRNet import forecast_plotter as fp
 
 ## ASSUMPTIONS: Let's put these properties right up front where they belong ###
 ###############################################################################
@@ -42,6 +43,55 @@ if not os.path.exists('us-counties.csv'):
         'covid-19-data/master/us-states.csv',
         'us-states.csv'
     )
+
+# # Anurag's addition (TODO: correct spot for this?)
+# # Determine the 5 biggest county case rates in these 5 states:
+# def get_county_state_dict(path):
+#     top5_df = pd.read_excel(path)
+#
+#     state_list = top5_df['State'].unique().tolist()
+#
+#     county_dict = {}
+#     for state in state_list:
+#         county_dict[state] = top5_df[top5_df['State'] == state][
+#             'Counties'].tolist()
+#     return pd.DataFrame.from_dict(county_dict)
+#
+#
+# def get_population_dict(path):
+#     df = pd.read_excel(path, skiprows=2, skipfooter=5)
+#     new_df = df[['Geographic Area', 'Unnamed: 12']].reset_index().iloc[
+#              1:].reset_index()
+#     Area_list = new_df['Geographic Area']
+#     area_list = [i.split(',')[0].split(' ')[0].replace('.', '') for i in
+#                  Area_list]
+#     new_df['Geographic Area'] = area_list
+#     return new_df
+#
+#
+# state_name = 'Texas'
+# county_df = get_county_state_dict(path='Top5counties.xlsx')
+#
+# pop_df = get_population_dict(
+#     "https://www2.census.gov/programs-surveys/popest/tables/2010-2019"
+#     "/counties/totals/co-est2019-annres-48.xlsx "
+# )
+#
+#
+# # NY, NJ, CA, MI, PA, TX
+# def get_county_pop_list(county_df, pop_df):
+#     county_list = county_df[state_name].tolist()
+#     new_pop_df = pop_df[pop_df['Geographic Area'].isin(county_list)]
+#     pop_list = new_pop_df['Unnamed: 12'].tolist()
+#     return county_list, pop_list
+#
+#
+# county_list, pop_list = get_county_pop_list(county_df, pop_df)
+# counties = []
+# hospital_beds = [19000, 14000, 5000, 5000, 7893]
+# for i in range(len(county_list)):
+#     counties.append([county_list[i], state_name, pop_list[i],
+#                      hospital_beds[i]])
 
 # Determine the 5 biggest county case rates in these 5 states:
 # NY, NJ, CA, MI, PA, TX
@@ -241,14 +291,12 @@ for county_data in counties:
 
     def build_model(i0, b_lstm=False, update_k=False):
         model = torch.nn.Sequential()
-        model.add_module("name", sirnet.SEIRNet(i0=i0, b_lstm=b_lstm,
+        model.add_module("name", SIRNet.SEIRNet(i0=i0, b_lstm=b_lstm,
                                                 update_k=update_k))
         return model
 
 
     def train(model, loss, optimizer, x, y, log_transform=True):
-        x = Variable(x, requires_grad=False)
-        y = Variable(y, requires_grad=False)
         optimizer.zero_grad()
 
         hx, fx = model.forward(x)
@@ -300,24 +348,19 @@ for county_data in counties:
 
     torch.save(model.state_dict(), weights_name)
 
-    sir_state, total_cases = model(Variable(X, requires_grad=False))
-    YY = np.squeeze(np.squeeze(total_cases.detach().numpy()))
+    sir_state, total_cases = model(X)
+    YY = util.to_numpy(total_cases)
 
     # Plot the SIR state
-    sir_state = np.squeeze(sir_state.detach().numpy())
-    pcs = plt.plot(sir_state)
-    plt.legend(['E', 'I', 'R', 'S'])
-    plt.xlabel('Day')
-    plt.ylabel('Value')
-    plt.title('SIR_state')
-    plt.show()
+    sir_state = util.to_numpy(sir_state)
+    util.plot_sir_state(sir_state)
 
     # Plot the total cases
     plt.title('Cases')
     plt.xlabel('Day')
     plt.ylabel('Cases')
-    pcs = plt.plot(range(Y.shape[0]), np.squeeze(np.array(Y)),
-                   'r', range(Y.shape[0]), YY, 'g')
+    pcs = plt.plot(range(Y.shape[0]), np.squeeze(np.array(Y)), 'r',
+                   range(Y.shape[0]), YY, 'g')
     plt.legend(pcs, ['Ground Truth', 'Predicted'])
     plt.show()
 
@@ -325,24 +368,26 @@ for county_data in counties:
     ############################################################################
     for i in range(0, 101, 10):
         p = i / 100.0
-        # xN = torch.Tensor(np.ones((1, 6)).astype(np.float32)) * p + X[-1, :, :] * (1-p)
-        xN = torch.Tensor(np.ones((1, 6)).astype(np.float32)) * p
-        print(xN)
-        rX = torch.stack([xN.clone() for i in range(200)])  # 80 x 1 x 6
+        # xN = (torch.ones((1, 6), dtype=torch.float32) * p +
+        #       X[-1, :, :] * (1 - p))
+        xN = torch.ones((1, 6), dtype=torch.float32) * p
+        print('xN', xN)
+        rX = xN[:, None, ...].expand(200, 1, 6)  # 200 x 1 x 6
         rX = torch.cat((X, rX), axis=0)
 
         # Give mobility number as percentage, exclude residences
-        pct = int(np.mean(np.squeeze(xN.numpy())[:5]) * 100)
+        pct = int(np.mean(util.to_numpy(xN)[:5]) * 100)
 
-        sir_state, total_cases = model(Variable(rX, requires_grad=False))
-        YY = np.squeeze(np.squeeze(total_cases.detach().numpy()))
+        sir_state, total_cases = model(rX)
+        YY = util.to_numpy(total_cases)
 
         # Plot the SIR state
-        s = np.squeeze(sir_state.detach().numpy())
+        s = util.to_numpy(sir_state)
         days = range(s.shape[0])
-        days = np.array(days)
-        bed40 = beds / population * np.ones((len(days),)) * bed_pct * population
-        bed70 = beds / population * np.ones((len(days),)) * .70 * population
+        days = np.asarray(days)
+        days_ones = np.ones((len(days),))
+        bed40 = beds / population * days_ones * bed_pct * population
+        bed70 = beds / population * days_ones * .70 * population
         active = s[:, 0] * reporting_rate * population
         total = (s[:, 0] + s[:, 1]) * reporting_rate * population
         hospitalized = s[:, 0] * float(hosp_rate) * reporting_rate * population
@@ -378,75 +423,56 @@ for county_data in counties:
     xN = X[-1, :, :]  # lockdown
     xN[0, :] = torch.Tensor(
         np.array([.1, .1, .1, .1, .1, 3]).astype(np.float32))
-    qX = torch.stack([xN.clone() for i in range(200)])  # 200 x 1 x 6
+    qX = xN[:, None, ...].expand(200, 1, 6)  # 200 x 1 x 6
     qX = torch.cat((X, qX), axis=0)
 
-    sir_state, total_cases = model(Variable(qX, requires_grad=False))
-    YY = np.squeeze(np.squeeze(total_cases.detach().numpy()))
+    sir_state, total_cases = model(qX)
+    YY = util.to_numpy(total_cases)
 
     # Plot the SIR state
-    sir_state1 = np.squeeze(sir_state.detach().numpy())
-    pcs = plt.plot(sir_state1)
-    plt.legend(['E', 'I', 'R', 'S'])
-    plt.xlabel('Day')
-    plt.ylabel('Value')
-    plt.title('SIR_state (lockdown mobility)')
-    plt.show()
+    sir_state1 = util.to_numpy(sir_state)
+    util.plot_sir_state(sir_state1, title='SIR_state (lockdown mobility)')
 
     ######## Forecast 120 more days returning to normal mobility ###############
     ############################################################################
     xN = torch.Tensor(np.ones((1, 6)).astype(np.float32))
-    rX = torch.stack([xN.clone() for i in range(200)])
+    rX = xN[:, None, ...].expand(200, 1, 6)  # 200 x 1 x 6
     rX = torch.cat((X, rX), axis=0)
 
-    sir_state, total_cases = model(Variable(rX, requires_grad=False))
-    YY = np.squeeze(np.squeeze(total_cases.detach().numpy()))
+    sir_state, total_cases = model(rX)
+    YY = util.to_numpy(total_cases)
 
     # Plot the SIR state
-    sir_state2 = np.squeeze(sir_state.detach().numpy())
-    pcs = plt.plot(sir_state2)
-    plt.legend(['E', 'I', 'R', 'S'])
-    plt.xlabel('Day')
-    plt.ylabel('Value')
-    plt.title('SIR_state (full mobility)')
-    plt.show()
+    sir_state2 = util.to_numpy(sir_state)
+    util.plot_sir_state(sir_state2, title='SIR_state (full mobility)')
 
     ######## Forecast 120 more days at half-return to normal mobility ##########
     ############################################################################
     xN = (torch.Tensor(np.ones((1, 6)).astype(np.float32)) + X[-1, :, :]) / 2
-    rX = torch.stack([xN.clone() for i in range(200)])  # 80 x 1 x 6
+    rX = xN[:, None, ...].expand(200, 1, 6)  # 200 x 1 x 6
     rX = torch.cat((X, rX), axis=0)
 
-    sir_state, total_cases = model(Variable(rX, requires_grad=False))
-    YY = np.squeeze(np.squeeze(total_cases.detach().numpy()))
+
+    sir_state, total_cases = model(rX)
+    YY = util.to_numpy(total_cases)
 
     # Plot the SIR state
-    sir_state3 = np.squeeze(sir_state.detach().numpy())
-    pcs = plt.plot(sir_state3)
-    plt.legend(['E', 'I', 'R', 'S'])
-    plt.xlabel('Day')
-    plt.ylabel('Value')
-    plt.title('SIR_state (split mobility)')
-    plt.show()
+    sir_state3 = util.to_numpy(sir_state)
+    util.plot_sir_state(sir_state3, title='SIR_state (split mobility)')
 
     ######## Forecast 120 more days at 25%-return to normal mobility ###########
     ############################################################################
     xN = (torch.Tensor(np.ones((1, 6)).astype(np.float32)) * .20 +
           X[-1, :, :] * .80)
-    rX = torch.stack([xN.clone() for i in range(200)])  # 80 x 1 x 6
+    rX = xN[:, None, ...].expand(200, 1, 6)  # 200 x 1 x 6
     rX = torch.cat((X, rX), axis=0)
 
-    sir_state, total_cases = model(Variable(rX, requires_grad=False))
-    YY = np.squeeze(np.squeeze(total_cases.detach().numpy()))
+    sir_state, total_cases = model(rX)
+    YY = util.to_numpy(total_cases)
 
     # Plot the SIR state
-    sir_state4 = np.squeeze(sir_state.detach().numpy())
-    pcs = plt.plot(sir_state4)
-    plt.legend(['E', 'I', 'R', 'S'])
-    plt.xlabel('Day')
-    plt.ylabel('Value')
-    plt.title('SIR_state (split mobility)')
-    plt.show()
+    sir_state4 = util.to_numpy(sir_state)
+    util.plot_sir_state(sir_state4, title='SIR_state (split mobility)')
 
     # Plot the hospitalization forecast
     hosp_rate = float(hosp_rate)
@@ -495,52 +521,3 @@ data_list, day_list = fp.get_arrays(fp.get_scenario_dict(fp.scenario_list),
                                     fp.scenario_list, fp.population)
 fp.plot_data(data_list, day_list, legend_list, 0)
 fp.plot_data(data_list, day_list, legend_list, 1)
-
-
-# Anurag's addition (TODO: correct spot for this?)
-# Determine the 5 biggest county case rates in these 5 states:
-def get_county_state_dict(path):
-    top5_df = pd.read_excel(path)
-
-    state_list = top5_df['State'].unique().tolist()
-
-    county_dict = {}
-    for state in state_list:
-        county_dict[state] = top5_df[top5_df['State'] == state][
-            'Counties'].tolist()
-    return pd.DataFrame.from_dict(county_dict)
-
-
-def get_population_dict(path):
-    df = pd.read_excel(path, skiprows=2, skipfooter=5)
-    new_df = df[['Geographic Area', 'Unnamed: 12']].reset_index().iloc[
-             1:].reset_index()
-    Area_list = new_df['Geographic Area']
-    area_list = [i.split(',')[0].split(' ')[0].replace('.', '') for i in
-                 Area_list]
-    new_df['Geographic Area'] = area_list
-    return new_df
-
-
-state_name = 'Texas'
-county_df = get_county_state_dict(path='Top5counties.xlsx')
-
-pop_df = get_population_dict(
-    "https://www2.census.gov/programs-surveys/popest/tables/2010-2019"
-    "/counties/totals/co-est2019-annres-48.xlsx "
-)
-
-
-# NY, NJ, CA, MI, PA, TX
-def get_county_pop_list(county_df, pop_df):
-    county_list = county_df[state_name].tolist()
-    new_pop_df = pop_df[pop_df['Geographic Area'].isin(county_list)]
-    pop_list = new_pop_df['Unnamed: 12'].tolist()
-    return county_list, pop_list
-
-
-county_list, pop_list = get_county_pop_list(county_df, pop_df)
-counties = []
-hospital_beds = [19000, 14000, 5000, 5000, 7893]
-for i in range(len(county_list)):
-    counties.append([county_list[i], state_name, pop_list[i], hospital_beds[i]])

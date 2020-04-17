@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-from torch.autograd import Variable
 from torch.nn.parameter import Parameter
 
 
@@ -49,8 +48,8 @@ class SIRNet(torch.nn.Module):
     def forward(self, X):
         time_steps = X.size(0)  # time first
         batch_size = X.size(1)  # batch second
-        hidden = Variable(
-            torch.zeros(batch_size, self.hidden_size)
+        hidden = torch.zeros(
+            batch_size, self.hidden_size
         ).to(device=X.device)  # hidden state is i,r,s
         hidden[:, 0] = self.i0  # forward should probably take this as an input
         hidden[:, 2] = 1.0 - self.i0
@@ -86,6 +85,7 @@ class SIRNet(torch.nn.Module):
 
 ###################### Defining Model #######################
 #############################################################
+# noinspection PyArgumentList,PyUnresolvedReferences
 class SEIRNet(torch.nn.Module):
     def __init__(self, input_size=6, i0=5.6e-6, update_k=True, hidden_size=4,
                  output_size=1, b_lstm=False, lstm_hidden_size=6):
@@ -98,17 +98,18 @@ class SEIRNet(torch.nn.Module):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
+
         self.b_lstm = b_lstm
-        self.lstm_hidden_size = lstm_hidden_size
+        self.lstm_hidden_size = lstm_hidden_size  # only applicable if b_lstm
 
         # Initializations (from prior training)
         b_init = torch.from_numpy(np.asarray(
             [7.3690e-02, 1.0000e-04, 1.0000e-04, 6.5169e-02, 1.4331e-01, 2.9631e-03]
         ).astype(np.float32)).reshape((1, input_size))
-        k_init = torch.from_numpy(
-            np.asarray([.11]).astype(np.float32)).reshape((1, 1))
-        s_init = torch.from_numpy(
-            np.asarray([.20]).astype(np.float32)).reshape((1, 1))
+        # k_init = torch.from_numpy(
+        #     np.asarray([.11]).astype(np.float32)).reshape((1, 1))
+        # s_init = torch.from_numpy(
+        #     np.asarray([.20]).astype(np.float32)).reshape((1, 1))
 
         self.k = .20  # Parameter(k_init)  # gamma - 5 day (3-7 day) average duration of infection:	Woelfel et al
         self.s = .20  # Parameter(s_init)  # sigma - 5 day incubation period (	Backer et al )
@@ -138,12 +139,12 @@ class SEIRNet(torch.nn.Module):
     def forward(self, X):
         time_steps = X.size(0)  # time first
         batch_size = X.size(1)  # batch second
-        hidden = Variable(
-            torch.zeros(batch_size, self.hidden_size)
-        ).to(device=X.device)  # hidden state is i,r,s
+        hidden = torch.zeros(
+            batch_size, self.hidden_size
+        ).to(device=X.device)  # hidden state is i,r,s,e
         hidden[:, 0] = self.i0  # initial infected
+        hidden[:, 2] = 1.0 - 2 * self.i0  # susceptible0
         hidden[:  3] = self.i0  # initial exposed
-        hidden[:, 2] = 1.0 - 2 * self.i0 # susceptible0
         p = hidden.clone()  # init previous state
         outputs = []
         hiddens = []
@@ -163,14 +164,15 @@ class SEIRNet(torch.nn.Module):
                 b = torch.relu(self.l2b(b_inter.squeeze(dim=1)))
                 b = b.squeeze()
             else:
-                #b = torch.clamp( torch.exp(self.i2b(X[t]**2)), 0) # predicting the log of the contact rate as a linear combination of mobility squared
-                #b = 2.2 # should be the value of b under normal mobility.  Kucharski et al
-                #b = 2.2 * torch.sigmoid(self.i2b(X[t]**3)) # would max out b at 2.2- maybe not a good idea
+                # b = torch.clamp( torch.exp(self.i2b(X[t]**2)), 0) # predicting the log of the contact rate as a linear combination of mobility squared
+                # b = 2.2 # should be the value of b under normal mobility.  Kucharski et al
+                # b = 2.2 * torch.sigmoid(self.i2b(X[t]**3)) # would max out b at 2.2- maybe not a good idea
                 b = torch.clamp(self.i2b(X[t]), 0) ** self.p  # best so far
                 # b = 2.2 - 2.2 * torch.tanh(self.i2b(X[t]))  # nope
                 # b = 2.2 - 2.2 * torch.tanh(self.i2b(X[t]) ** self.p)  # nope
 
             # update the hidden state SIR model (states are I R S E)
+            # @formatter:off
             d1 = self.k * p[:, 0]       # gamma * I  (infected people recovering)
             d2 = p[:, 0] * b * p[:, 2]  # b * s * i  (susceptible people becoming exposed)
             d3 = self.s * p[:, 3]       # sigma * e  (exposed people becoming infected)
@@ -179,6 +181,7 @@ class SEIRNet(torch.nn.Module):
             hidden[:, 0] = p[:, 0] + d3 - d1  # infected = infected + s * exposed - infected*recovery_rate
             hidden[:, 1] = p[:, 1] + d1       # recovered = recovered + infected*recovery_rate
             hidden[:, 2] = p[:, 2] - d2       # susceptible
+            # @formatter:on
 
             # update the output
             hidden = torch.clamp(hidden, 0, 1)  # all states must be positive
