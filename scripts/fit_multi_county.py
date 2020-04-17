@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 import torch
 from torch import optim
-import os
+
 
 # root of workspace
 ROOT_DIR = os.path.join(os.path.dirname(__file__), '..')
