@@ -134,7 +134,10 @@ if not os.path.exists('us-counties.csv'):
 # pprint(counties)
 # sys.exit(0)
 
+# Hospital beds/1k people
+# https://www.kff.org/other/state-indicator/beds-by-ownership/?activeTab=graph&currentTimeframe=0&startTimeframe=19&selectedRows=%7B%22states%22:%7B%22texas%22:%7B%7D%7D%7D&sortModel=%7B%22colId%22:%22Location%22,%22sort%22:%22asc%22%7D
 if TRAIN_MULTIPLE:
+    # TODO: bring in hosp. bed for these rows...
     df = pd.read_excel(
         'https://www2.census.gov/programs-surveys/popest/tables/2010-2019/'
         'counties/totals/co-est2019-annres-48.xlsx',
