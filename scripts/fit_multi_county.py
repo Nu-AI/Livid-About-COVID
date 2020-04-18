@@ -19,11 +19,11 @@ ROOT_DIR = os.path.join(os.path.dirname(__file__), '..')
 sys.path.append(ROOT_DIR)
 # directory of data
 DATA_DIR = os.path.join(ROOT_DIR, 'data')
-
+#directory of model weights
 WEIGHTS_DIR = os.path.join(ROOT_DIR, 'model_weights')
 if not os.path.exists(WEIGHTS_DIR):
     os.mkdir(WEIGHTS_DIR)
-
+# directory of results
 RESULTS_DIR = os.path.join(ROOT_DIR, 'Prediction_results')
 if not os.path.exists(RESULTS_DIR):
     os.mkdir(RESULTS_DIR)

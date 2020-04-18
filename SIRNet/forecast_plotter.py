@@ -7,6 +7,14 @@ import matplotlib as mpl
 
 from datetime import datetime, timedelta
 from collections import OrderedDict
+import os
+import sys
+
+ROOT_DIR = os.path.join(os.path.dirname(__file__), '..')
+sys.path.append(ROOT_DIR)
+
+RESULTS_DIR = os.path.join(ROOT_DIR, 'Prediction_results')
+
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
@@ -20,8 +28,9 @@ def get_predictions(path):
     return np.load(path, allow_pickle=True)
 
 
-def get_scenario_dict(scenario_list):
-    pathlist = ["Average Case " + i + '.npy' for i in scenario_list]
+def get_scenario_dict(scenario_list, county_name):
+    string  = os.path.join(RESULTS_DIR, "Average Case ")
+    pathlist = [string + i + '.npy' for i in scenario_list]
     # pathlist = ["Average Case " + i + county_name + '.npy' for i in
     #             scenario_list]
     dict = {}
