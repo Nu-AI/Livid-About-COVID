@@ -15,11 +15,23 @@ import matplotlib.pyplot as plt
 import torch
 from torch import optim
 
+
 # root of workspace
 ROOT_DIR = os.path.join(os.path.dirname(__file__), '..')
 sys.path.append(ROOT_DIR)
 # directory of data
 DATA_DIR = os.path.join(ROOT_DIR, 'data')
+
+# TODO review naming scheme of directory
+WEIGHTS_DIR = os.path.join(ROOT_DIR, 'model_weights')
+if not os.path.exists(WEIGHTS_DIR):
+    os.mkdir(WEIGHTS_DIR)
+
+# TODO review decision to have this directory (at least naming scheme)
+RESULTS_DIR = os.path.join(ROOT_DIR, 'Prediction_results')
+if not os.path.exists(RESULTS_DIR):
+    os.mkdir(RESULTS_DIR)
+
 import SIRNet
 from SIRNet import util
 from SIRNet import forecast_plotter as fp
@@ -208,10 +220,12 @@ def main(Xs, Ys, names=None):
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=4000, gamma=0.1)
     # batch_size = Y.shape[0]
     torch.autograd.set_detect_anomaly(True)
+
     if TRAIN_MULTIPLE:
         weights_name = '{}_weights_multiple.pt'.format(state_name)
     else:
         weights_name = '{}_weights.pt'.format(county_name)
+    weights_name = os.path.join(WEIGHTS_DIR, weights_name)
 
     if not os.path.exists(weights_name):
         iters = 1000
@@ -413,9 +427,10 @@ def main(Xs, Ys, names=None):
             'Total Deaths': s[:, 1] * 0.034 * reporting_rate
         }
         # Alternative way to save
+        string  = str(cases[i]) + str(county_name)
         # str = 'Average Case ' + str(cases[i]) + str(county_name) + '.npy'
         # np.save(str, data)
-        np.save('Average Case {}.npy'.format(cases[i]), data)
+        np.save(os.path.join(RESULTS_DIR,'Average Case {}.npy'.format(string)), data)
 
     legend_list = ['Current Mobility', '20% Mobility', '50% Mobility',
                    'Normal Mobility']
