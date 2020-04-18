@@ -30,7 +30,8 @@ def get_predictions(path):
 
 def get_scenario_dict(scenario_list, county_name):
     string = os.path.join(RESULTS_DIR, "Average Case ")
-    pathlist = [string + i + '.npy' for i in scenario_list]
+    pathlist = [string + i + county_name + '.npy'
+                for i in scenario_list]
     # pathlist = ["Average Case " + i + county_name + '.npy' for i in
     #             scenario_list]
     dict = {}
@@ -141,7 +142,7 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None):
 
     log_scale = 0
 
-    if (gridplot != 1):
+    if gridplot != 1:
         for i in range(len(data_list)):
             day_arr = day_list[i]
             data_arr = data_list[i]
@@ -156,7 +157,7 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None):
                      color=color_list[i], linewidth=linewidth)
 
         if gt_arr is not None:
-            plt.plot(day_arr, gt_arr)
+            plt.plot(day_arr[:len(gt_arr)], gt_arr, label='Ground Truth')
 
         plt.xlabel(xlabel, **sp_label_font, labelpad=x_labelpad)
         plt.ylabel(ylabel, **sp_label_font, labelpad=y_labelpad)
@@ -164,7 +165,7 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None):
         plt.xticks(range(0, max_days, int(max_days / len(xticklabel))),
                    xticklabel, rotation=xtick_rotation,
                    **tick_font)
-        if (log_scale):
+        if log_scale:
             plt.yscale('log')
         # plt.yticks(np.arange(0, 1000000, 200000), [0, 200, 400, 600, 800],
         #           **tick_font)
@@ -183,24 +184,25 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None):
         plt.show()
 
     else:
+        # TODO: this creates a duplicate figure...
         fig, ax = plt.subplots(1, 2)
 
-        while (count_y < 2):
+        while count_y < 2:
             ax1 = ax[count_y]
             ax1.grid(False)
             print(count_y)
             for i in range(len(data_list)):
                 day_arr = day_list[i]
                 data_arr = data_list[i]
-                if (count_y):
+                if count_y:
                     temp = 1
-                    label_string = map_list[i] + ". " + legend_list[
-                        i] + " (Total)"
+                    label_string = (map_list[i] + ". " +
+                                    legend_list[i] + " (Total)")
                     linestyle = "-"
                 else:
                     temp = 0
-                    label_string = map_list[i] + ". " + legend_list[
-                        i] + " (Active)"
+                    label_string = (map_list[i] + ". " +
+                                    legend_list[i] + " (Active)")
                     linestyle = "--"
                 ax1.plot(day_arr[0:max_days], data_arr[temp][0:max_days],
                          label=label_string, linestyle=linestyle,
@@ -212,7 +214,7 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None):
             ax1.set_xticks(range(0, max_days, int(max_days / len(xticklabel))))
             ax1.set_xticklabels(xticklabel, rotation=xtick_rotation,
                                 **tick_font)
-            if (log_scale):
+            if log_scale:
                 ax1.set_yscale('log')
             ax1.legend(frameon=False)
             # ax1.set_title(title, ** title_font)

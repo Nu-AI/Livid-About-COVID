@@ -69,6 +69,8 @@ else:
 # Download latest data
 import urllib.request
 
+# TODO: move these CSV downloads to the correct place (also check timestamp with
+#  what is available online?)
 if not os.path.exists('us-counties.csv'):
     urllib.request.urlretrieve(
         'https://raw.githubusercontent.com/nytimes/'
@@ -241,6 +243,7 @@ def main(Xs, Ys, names=None):
     else:
         model.load_state_dict(torch.load(weights_name))
         iters = 1000
+        iters = 0
 
     for i in range(iters):
         if TRAIN_MULTIPLE:
@@ -290,7 +293,8 @@ def main(Xs, Ys, names=None):
     plt.title('Cases')
     plt.xlabel('Day')
     plt.ylabel('Cases')
-    pcs = plt.plot(range(Y.shape[0]), util.to_numpy(Y), 'r',
+    Y = util.to_numpy(Y)  # Torch -> NumPy and squeeze
+    pcs = plt.plot(range(Y.shape[0]), Y, 'r',
                    range(Y.shape[0]), YY, 'g')
     plt.legend(pcs, ['Ground Truth', 'Predicted'])
     plt.show()
@@ -448,8 +452,10 @@ def main(Xs, Ys, names=None):
     #                'Normal Mobility']
     legend_list = ['20% Mobility', 'Normal Mobility', '50% Mobility',
                    '75% Mobility']
-    data_list, day_list = fp.get_arrays(fp.get_scenario_dict(fp.scenario_list),
-                                        fp.scenario_list, fp.population)
+    data_list, day_list = fp.get_arrays(
+        fp.get_scenario_dict(fp.scenario_list, county_name),
+        fp.scenario_list, fp.population
+    )
     # fp.plot_data(data_list, day_list, legend_list, 0)
     # fp.plot_data(data_list, day_list, legend_list, 1)
     fp.plot_data(data_list, day_list, legend_list, 0, Y)
