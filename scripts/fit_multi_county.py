@@ -450,7 +450,7 @@ def main(Xs, Ys, names=None):
 
     # legend_list = ['Current Mobility', '20% Mobility', '50% Mobility',
     #                'Normal Mobility']
-    legend_list = ['20% Mobility', 'Normal Mobility', '50% Mobility',
+    legend_list = ['25% Mobility', 'Normal Mobility', '50% Mobility',
                    '75% Mobility']
     data_list, day_list = fp.get_arrays(
         fp.get_scenario_dict(fp.scenario_list, county_name),
