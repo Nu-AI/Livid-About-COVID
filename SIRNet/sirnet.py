@@ -20,18 +20,14 @@ class SIRNet(torch.nn.Module):
         self.b_lstm = b_lstm
 
         # Initializations (from prior training)
-        b_init = torch.from_numpy(np.asarray(
-            [7.3690e-02, 1.0000e-04, 1.0000e-04, 6.5169e-02, 1.4331e-01,
-             2.9631e-03]
-        ).astype(np.float32)).reshape((1, input_size))
-        k_init = torch.from_numpy(
-            np.asarray([.09]).astype(np.float32)).reshape((1, 1))
+        b_init = torch.tensor(
+            [[7.3690e-02, 1.0000e-04, 1.0000e-04, 6.5169e-02, 1.4331e-01,
+              2.9631e-03]], dtype=torch.float32
+        )
+        k_init = torch.tensor([[.09]], dtype=torch.float32)
 
-        self.k = Parameter(k_init)
+        self.k = Parameter(k_init, requires_grad=update_k)
         self.i0 = i0
-
-        if not update_k:
-            self.k.requires_grad = False
 
         if b_lstm:
             self.i2b = torch.nn.LSTM(input_size, 1, bias=False)
@@ -67,7 +63,8 @@ class SIRNet(torch.nn.Module):
                 b, (h_t, c_t) = self.i2b(X[None, t], (h_t, c_t))
                 b = b.squeeze()
             else:
-                b = torch.clamp(self.i2b(X[t]),0) # contact rate cannot go negative
+                b = torch.clamp(self.i2b(X[t]),
+                                0)  # contact rate cannot go negative
 
             # update the hidden state SIR model
             drdt = self.k * p[:, 0]
@@ -104,18 +101,33 @@ class SEIRNet(torch.nn.Module):
         self.lstm_hidden_size = lstm_hidden_size  # only applicable if b_lstm
 
         # Initializations (from prior training)
-        b_init = torch.from_numpy(np.asarray(
-            [7.3690e-02, 1.0000e-04, 1.0000e-04, 6.5169e-02, 1.4331e-01, 2.9631e-03]
-        ).astype(np.float32)).reshape((1, input_size))
-        # k_init = torch.from_numpy(
-        #     np.asarray([.11]).astype(np.float32)).reshape((1, 1))
-        # s_init = torch.from_numpy(
-        #     np.asarray([.20]).astype(np.float32)).reshape((1, 1))
+        b_init = torch.tensor(
+            [[7.3690e-02, 1.0000e-04, 1.0000e-04, 6.5169e-02, 1.4331e-01,
+              2.9631e-03]], dtype=torch.float32
+        )
+        # k_init = torch.tensor([[.11]], dtype=torch.float32)
+        # s_init = torch.tensor([[.20]], dtype=torch.float32)
 
-        self.k = .20  # Parameter(k_init)  # gamma - 5 day (3-7 day) average duration of infection:	Woelfel et al
-        self.s = .20  # Parameter(s_init)  # sigma - 5 day incubation period (	Backer et al )
-        self.e0 = float(e0)
-        self.i0 = float(i0)
+        # gamma - 5 day (3-7 day) average duration of infection: Woelfel et al
+        self.k = Parameter(torch.tensor([[.20]], dtype=torch.float32),
+                           requires_grad=False)
+        # sigma - 5 day incubation period (	Backer et al )
+        self.s = Parameter(torch.tensor([[.20]], dtype=torch.float32),
+                           requires_grad=False)
+
+        self.p = Parameter(torch.tensor([[2.5]], dtype=torch.float32),
+                           requires_grad=True)
+        self.q = Parameter(torch.tensor([[0.2]], dtype=torch.float32),
+                           requires_grad=True)
+
+        # Exposed init @ time 0 (no gradient)
+        self.e0 = Parameter(torch.tensor(e0, dtype=torch.float32),
+                            requires_grad=False)
+        # Infected init @ time 0 (no gradient)
+        self.i0 = Parameter(torch.tensor(i0, dtype=torch.float32),
+                            requires_grad=False)
+
+        # self.p.requires_grad = False
 
         # if not update_k:  # TODO: disable for now as k is a float...
         #     self.k.requires_grad = False
@@ -125,9 +137,6 @@ class SEIRNet(torch.nn.Module):
             self.i2l = torch.nn.LSTM(input_size, lstm_hidden_size)
             self.l2b = torch.nn.Linear(lstm_hidden_size, 1)
         else:
-            self.p = Parameter(
-                torch.from_numpy(np.asarray([2.5]).astype(np.float32)).reshape(
-                    (1, 1)))
             self.i2b = torch.nn.Linear(input_size, 1, bias=False)
             self.i2b.weight.data = b_init
 
@@ -141,12 +150,15 @@ class SEIRNet(torch.nn.Module):
     def forward(self, X):
         time_steps = X.size(0)  # time first
         batch_size = X.size(1)  # batch second
+
         hidden = torch.zeros(
             batch_size, self.hidden_size
         ).to(device=X.device)  # hidden state is i,r,s,e
-        hidden[:, 0] = self.e0  # initial infected
+        hidden[:, 0] = self.i0  # initial infected
         hidden[:, 3] = self.e0  # initial exposed
-        hidden[:, 2] = 1.0 - 2 * self.e0  # susceptible0
+        hidden[:, 2] = 1.0 - self.i0 - self.e0  # susceptible0
+        # hidden[:, 1] = 0.0      # recovered
+
         p = hidden.clone()  # init previous state
         outputs = []
         hiddens = []
@@ -169,9 +181,10 @@ class SEIRNet(torch.nn.Module):
                 # b = torch.clamp( torch.exp(self.i2b(X[t]**2)), 0) # predicting the log of the contact rate as a linear combination of mobility squared
                 # b = 2.2 # should be the value of b under normal mobility.  Kucharski et al
                 # b = 2.2 * torch.sigmoid(self.i2b(X[t]**3)) # would max out b at 2.2- maybe not a good idea
-                b = torch.clamp(self.i2b(X[t]), 0) ** self.p  # best so far
+                # b = torch.clamp(self.i2b(X[t]), 0) ** self.p  # best so far
                 # b = 2.2 - 2.2 * torch.tanh(self.i2b(X[t]))  # nope
                 # b = 2.2 - 2.2 * torch.tanh(self.i2b(X[t]) ** self.p)  # nope
+                b = self.q * torch.norm(X[t, 0, :5]) ** self.p
 
             # update the hidden state SIR model (states are I R S E)
             # @formatter:off

@@ -18,8 +18,10 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_colwidth', None)
 
-scenario_list = ['Current Mobility', '20% Return to Normal',
-                 '50% Return to Normal', 'Return to Normal Mobility']
+# # scenario_list = ['Current Mobility', '20% Return to Normal',
+#                  '50% Return to Normal', 'Return to Normal Mobility']
+scenario_list = ['20% Mobility', 'Normal Mobility', '50% Mobility',
+                 '75% Mobility']
 
 
 def get_predictions(path):
@@ -87,14 +89,12 @@ def get_arrays(dict, scenario_list, population):
     return data_list, day_list
 
 
-def plot_data(data_list, day_list, legend_list, gridplot):
+def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None):
     # Plotting parameters
     plt.figure(dpi=100)
     plt.rcParams['axes.linewidth'] = 1
 
     # fig, ax = plt.subplots()
-
-    #
     plt.rcParams.update({'font.size': 14, 'legend.labelspacing': 1.3})
     count_x = 0
     count_y = 0
@@ -155,6 +155,9 @@ def plot_data(data_list, day_list, legend_list, gridplot):
                      label=label_string2,
                      color=color_list[i], linewidth=linewidth)
 
+        if gt_arr is not None:
+            plt.plot(day_arr, gt_arr)
+
         plt.xlabel(xlabel, **sp_label_font, labelpad=x_labelpad)
         plt.ylabel(ylabel, **sp_label_font, labelpad=y_labelpad)
 
@@ -163,8 +166,8 @@ def plot_data(data_list, day_list, legend_list, gridplot):
                    **tick_font)
         if (log_scale):
             plt.yscale('log')
-        plt.yticks(np.arange(0, 1000000, 200000), [0, 200, 400, 600, 800],
-                   **tick_font)
+        # plt.yticks(np.arange(0, 1000000, 200000), [0, 200, 400, 600, 800],
+        #           **tick_font)
         plt.legend(prop={'size': legend_size, 'weight': 'bold'})
         plt.margins(0)
         manager = plt.get_current_fig_manager()

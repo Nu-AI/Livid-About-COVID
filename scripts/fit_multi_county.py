@@ -21,7 +21,8 @@ sys.path.append(ROOT_DIR)
 # directory of data
 DATA_DIR = os.path.join(ROOT_DIR, 'data')
 
-# TODO review naming scheme of directory
+# TODO review naming scheme of directory (also maybe download weights via
+#  LFS-like thing instead of commit??)
 # directory of model weights
 WEIGHTS_DIR = os.path.join(ROOT_DIR, 'model_weights')
 if not os.path.exists(WEIGHTS_DIR):
@@ -40,8 +41,10 @@ from SIRNet import forecast_plotter as fp
 ## ASSUMPTIONS: Let's put these properties right up front where they belong ###
 ###############################################################################
 # @formatter:off
-reporting_rate = 0.20  # Portion of cases that are actually detected
-delay_days = 4         # Days between becoming infected / positive confirmation (due to incubation period / testing latency
+# reporting_rate = 0.20  # Portion of cases that are actually detected
+reporting_rate = 0.60  # Portion of cases that are actually detected
+# delay_days = 4         # Days between becoming infected / positive confirmation (due to incubation period / testing latency
+delay_days = 3         # Days between becoming infected / positive confirmation (due to incubation period / testing latency
 bed_pct = 0.40         # Portion of hospital beds that can be allocated for Covid-19 patients
 hosp_rate = 0.20       # Portion of cases that result in hospitalization
 # @formatter:on
@@ -156,6 +159,8 @@ else:
     # NY, NJ, CA, MI, PA, TX
     counties = [
         # county, state, population, hospital beds
+        # ['King', 'Washington', 2.25e6, 8000],
+        # ['Harris','Texas', 4.7e6, 12000],
         # ['New York City', 'New York', 8.0e6, 32000],
         # ['Bexar', 'Texas', 1.99e6, 7793],
         ['Bexar', 'Texas', 2.00e6, 7793],
@@ -340,10 +345,12 @@ def main(Xs, Ys, names=None):
         plt.show()
         plt.close()
 
-    ######## Forecast 200 more days at current quarantine mobility #############
+    ######## Forecast 200 more days at 20% quarantine mobility #############
     ############################################################################
-    xN = torch.tensor([[.1, .1, .1, .1, .1, 3]],
-                      dtype=torch.float32, device=device)
+    # xN = X[-1, :, :]  # current mobility...
+    # xN = torch.tensor([[.1, .1, .1, .1, .1, 3]],
+    #                   dtype=torch.float32, device=device)
+    xN = torch.ones((1, 6), dtype=torch.float32, device=device) * .20
     qX = xN.expand(200, *xN.shape)  # 200 x 1 x 6
     qX = torch.cat((X, qX), dim=0)
 
@@ -353,7 +360,7 @@ def main(Xs, Ys, names=None):
     sir_state1 = util.to_numpy(sir_state)
     util.plot_sir_state(sir_state1, title='SIR_state (lockdown mobility)')
 
-    ######## Forecast 120 more days returning to normal mobility ###############
+    ######## Forecast 200 more days returning to normal mobility ###############
     ############################################################################
     xN = torch.ones((1, 6), dtype=torch.float32, device=device)
     rX = xN.expand(200, *xN.shape)  # 200 x 1 x 6
@@ -365,10 +372,9 @@ def main(Xs, Ys, names=None):
     sir_state2 = util.to_numpy(sir_state)
     util.plot_sir_state(sir_state2, title='SIR_state (full mobility)')
 
-    ######## Forecast 200 more days at half-return to normal mobility ##########
+    ######## Forecast 200 more days at 50% normal mobility ##########
     ############################################################################
-    xN = (torch.ones((1, 6), dtype=torch.float32, device=device) +
-          X[-1, :, :]) / 2
+    xN = torch.ones((1, 6), dtype=torch.float32, device=device) * .50
     rX = xN.expand(200, *xN.shape)  # 200 x 1 x 6
     rX = torch.cat((X, rX), dim=0)
 
@@ -414,8 +420,9 @@ def main(Xs, Ys, names=None):
     plt.show()
 
     # Save the data
-    cases = ['Current Mobility', 'Return to Normal Mobility',
-             '50% Return to Normal', '20% Return to Normal']
+    # cases = ['Current Mobility', 'Return to Normal Mobility',
+    #          '50% Return to Normal', '20% Return to Normal']
+    cases = ['20% Mobility', 'Normal Mobility', '50% Mobility', '75% Mobility']
     for i, s in enumerate([sir_state1, sir_state2, sir_state3, sir_state4]):
         data = {
             'Days': np.array(days), 'Active Cases (latent)': s[:, 0],
@@ -428,17 +435,21 @@ def main(Xs, Ys, names=None):
             'Total Deaths': s[:, 1] * 0.034 * reporting_rate
         }
         # Alternative way to save
-        string  = str(cases[i]) + str(county_name)
+        string = str(cases[i]) + str(county_name)
         # str = 'Average Case ' + str(cases[i]) + str(county_name) + '.npy'
         # np.save(str, data)
-        np.save(os.path.join(RESULTS_DIR,'Average Case {}.npy'.format(string)), data)
+        np.save(os.path.join(RESULTS_DIR, 'Average Case {}.npy'.format(string)),
+                data)
 
-    legend_list = ['Current Mobility', '20% Mobility', '50% Mobility',
-                   'Normal Mobility']
+    # legend_list = ['Current Mobility', '20% Mobility', '50% Mobility',
+    #                'Normal Mobility']
+    legend_list = ['20% Mobility', 'Normal Mobility', '50% Mobility',
+                   '75% Mobility']
     data_list, day_list = fp.get_arrays(fp.get_scenario_dict(fp.scenario_list),
                                         fp.scenario_list, fp.population)
-    fp.plot_data(data_list, day_list, legend_list, 0)
-    fp.plot_data(data_list, day_list, legend_list, 1)
+    # fp.plot_data(data_list, day_list, legend_list, 0)
+    # fp.plot_data(data_list, day_list, legend_list, 1)
+    fp.plot_data(data_list, day_list, legend_list, 0, Y)
 
 
 ## Iterate through counties ##
@@ -532,7 +543,7 @@ for county_data in counties:
     p = []
     df = pd.read_csv(
         os.path.join(DATA_DIR, 'US_County_AgeGrp_2018.csv'),
-        encoding="cp1252"
+        encoding='cp1252'
     )
     a = df.loc[(df['STNAME'] == state_name) &
                (df['CTYNAME'] == county_name + ' County')]
@@ -611,12 +622,21 @@ for county_data in counties:
     #############################################################
     # Data is 6 columns of mobility, 1 column of case number
     data = np.asarray(data).astype(np.float32)
-    data = data[5:, :]  # Skip 5 days until we have 10+ patients
-
+    # TODO: integrate this 10+ patients part correctly...
+    # data = data[5:, :]  # Skip 5 days until we have 10+ patients
+    # data[:,5] = 0.0 # residential factored out
     data[:, :6] = (
             1.0 + data[:, :6] / 100.0
     )  # convert percentages of change to fractions of activity
     print('data.shape', data.shape)
+    print('Initial mobility', data[0, :])
+
+    # TODO: I made the initialization for i0 come from the previous day, so the
+    #  predicted and actual match better
+    METHOD_e0i0 = 2
+    if METHOD_e0i0 == 1:
+        # e0 = i0 = float(data[4, 6]) / population
+        e0 = i0 = float(data[4, 6]) / population / reporting_rate
 
     # Split into input and output data
     X, Y = data[:, :6], data[:, 6]
@@ -624,18 +644,30 @@ for county_data in counties:
     #   residential
     # Y is the total number of cases
     plt.plot(Y)
+    plt.xlabel('Day')
+    plt.ylabel('Total cases')
+    plt.show()
+
+    mag = [np.linalg.norm(X[t, :5]) for t in range(X.shape[0])]
+    plt.plot(mag)
+    plt.xlabel('Day')
+    plt.ylabel('Activity')
     plt.show()
 
     # divide out population of county
     Y = Y / population
     # multiply by suspected under-reporting rate
     Y = Y / reporting_rate
-    # i0 and e0 (assume incubation of `delay_days`)
-    e0 = Y[0]
-    # e0 minus the gradient between of Y (point at 0 and point at delay_days)
-    # times delay_days = 2 * e0 - Y[delay_days], clip at 0
-    i0 = max(2 * e0 - Y[delay_days], 0)
-    print('e0={} | i0={}'.format(e0, i0))
+
+    if METHOD_e0i0 == 2:
+        # i0 and e0 (assume incubation of `delay_days`)
+        e0 = Y[0]
+        # e0 minus the gradient between of Y (point at 0 and point at
+        # delay_days) times delay_days = 2 * e0 - Y[delay_days], clip at 0
+        i0 = max(2 * e0 - Y[delay_days], 0)
+        print('e0={} | i0={}'.format(e0, i0))
+    else:
+        raise NotImplementedError('no METHOD_e0i0 for "{}"'.format(METHOD_e0i0))
     # To Torch on device
     X = torch.from_numpy(X).to(device=device)
     Y = torch.from_numpy(Y).to(device=device)
