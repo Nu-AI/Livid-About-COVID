@@ -10,7 +10,7 @@ from collections import OrderedDict
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
-pd.set_option('display.max_colwidth', -1)
+pd.set_option('display.max_colwidth', None)
 
 scenario_list = ['Current Mobility', '20% Return to Normal',
                  '50% Return to Normal', 'Return to Normal Mobility']
@@ -216,7 +216,7 @@ def plot_data(data_list, day_list, legend_list, gridplot):
         # fig.text(0.05, 0.5, 'Percent change', va='center', rotation='vertical', **axis_font)
         # fig.tight_layout()
         # plt.savefig("_split_plots.pdf", orientation='portrait')
-        plt.show(fig)
+        plt.show()
 
 # legend_list = ['Current Mobility', '20% Mobility', '50% Mobility', 'Normal Mobility']
 # data_list, day_list = get_arrays(get_scenario_dict(scenario_list), scenario_list,population)

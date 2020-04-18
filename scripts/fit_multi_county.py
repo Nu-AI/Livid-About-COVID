@@ -2,6 +2,7 @@ import os
 import csv
 import sys
 import math
+import random
 from collections import OrderedDict
 
 import urllib.request
@@ -31,6 +32,8 @@ delay_days = 4         # Days between becoming infected / positive confirmation 
 bed_pct = 0.40         # Portion of hospital beds that can be allocated for Covid-19 patients
 hosp_rate = 0.20       # Portion of cases that result in hospitalization
 # @formatter:on
+
+TRAIN_MULTIPLE = False
 
 ## TODO LIST
 # - What is residential mobility? David thinks it should be ignored, not very
@@ -62,7 +65,7 @@ if not os.path.exists('us-counties.csv'):
         'us-states.csv'
     )
 
-# # Anurag's addition (TODO: correct spot for this?)
+# # Anurag's addition
 # # Determine the 5 biggest county case rates in these 5 states:
 # def get_county_state_dict(path):
 #     top5_df = pd.read_excel(path)
@@ -92,7 +95,7 @@ if not os.path.exists('us-counties.csv'):
 #
 # pop_df = get_population_dict(
 #     "https://www2.census.gov/programs-surveys/popest/tables/2010-2019"
-#     "/counties/totals/co-est2019-annres-48.xlsx "
+#     "/counties/totals/co-est2019-annres-48.xlsx"
 # )
 #
 #
@@ -110,213 +113,72 @@ if not os.path.exists('us-counties.csv'):
 # for i in range(len(county_list)):
 #     counties.append([county_list[i], state_name, pop_list[i],
 #                      hospital_beds[i]])
+#
+# from pprint import pprint
+# pprint(counties)
+# sys.exit(0)
 
-# Determine the 5 biggest county case rates in these 5 states:
-# NY, NJ, CA, MI, PA, TX
-counties = [
-    # county, state, population, hospital beds
-    # ['New York City', 'New York', 8.0e6, 32000],
-    ['Bexar', 'Texas', 1.99e6, 7793],
-]
-## Iterate through counties ##
-##############################
-for county_data in counties:
-    county_name, state_name, population, beds = county_data
-
-    ############### Loading data #########################
-    ######################################################
-
-    # Load US County cases data
-    cases = OrderedDict()
-    with open('us-counties.csv', 'r') as f:
-        csv_reader = csv.reader(f, delimiter=',')
-        for row in csv_reader:
-            if row[1] == county_name and row[2] == state_name:
-                cases[row[0]] = row[4]  # cases by date
-
-    # Shift case data assuming it lags actual by 10 days
-    shift_cases = OrderedDict()
-    for i in range(len(cases.keys()) - delay_days):
-        k = list(cases.keys())[i]
-        k10 = list(cases.keys())[i + delay_days]
-        shift_cases[k] = cases[k10]
-    cases = shift_cases
-
-    # Load Activity Data
-    state_path = os.path.join(DATA_DIR, 'Mobility data',
-                              '{}_mobility.csv'.format(state_name))
-    mkeys = ['Retail & recreation', 'Grocery & pharmacy', 'Parks',
-             'Transit stations', 'Workplace', 'Residential']
-    if os.path.exists(state_path):
-        mobilities = {}
-        for category in mkeys:
-            mobilities[category] = OrderedDict()
-            with open(os.path.join(DATA_DIR, 'Mobility data',
-                                   '{}_mobility.csv'.format(state_name)),
-                      'r') as f:
-                csv_reader = csv.reader(f, delimiter=',')
-                header = next(csv_reader)
-                for row in csv_reader:
-                    if (row[1] == state_name and
-                            row[2].replace(' County', '') == county_name and
-                            row[3] == category):
-                        dates = eval(row[6])
-                        vals = eval(row[7])
-                        for i, date in enumerate(dates):
-                            mobilities[category][date] = vals[i]
-    else:
-        print('No county-level mobility available.  Reverting to state')
-        mobilities = {}
-        for category in mkeys:
-            mobilities[category] = OrderedDict()
-            with open(os.path.join(DATA_DIR, 'Mobility data',
-                                   'US_mobility.csv'), 'r') as f:
-                csv_reader = csv.reader(f, delimiter=',')
-                header = next(csv_reader)
-                for row in csv_reader:
-                    if (row[1] == 'US' and row[2] == state_name and
-                            row[3] == category):
-                        dates = eval(row[6])
-                        vals = eval(row[7])
-                        for i, date in enumerate(dates):
-                            mobilities[category][date] = vals[i]
-
-    # Rearrange activity data
-    mobility = OrderedDict()
-    for date in mobilities['Retail & recreation']:
-        mobility[date] = [mobilities[k][date] for k in mkeys]
-
-    # Common Case Data + Activity Data Dates
-    data = []
-    common_dates = []
-    for k in cases.keys():
-        if k not in mobility.keys():
-            continue
-        data.append(mobility[k] + [cases[k]])  # total cases
-
-    # Estimate hospitalization rate
-    p = []
-    df = pd.read_csv(
-        os.path.join(DATA_DIR, 'US_County_AgeGrp_2018.csv'),
-        encoding="cp1252"
+if TRAIN_MULTIPLE:
+    df = pd.read_excel(
+        'https://www2.census.gov/programs-surveys/popest/tables/2010-2019/'
+        'counties/totals/co-est2019-annres-48.xlsx',
+        skiprows=(0, 1, 2, 4))
+    df.dropna(inplace=True)
+    df.rename(columns={df.columns[0]: 'County'}, inplace=True)
+    df.loc[:, 'County'] = df['County'].apply(
+        lambda name: name.replace('.', '')[:name.index(' County') - 1]
     )
-    a = df.loc[(df['STNAME'] == state_name) &
-               (df['CTYNAME'] == county_name + ' County')]
-    key_list = []
-    for keys in a.keys():
-        key_list.append(keys)
-    print(key_list)
+    df.loc[:, 'State'] = 'Texas'
+    counties = df[['County', 'State', 2019]].values.tolist()
 
-    # TODO: comment these (or make more efficient via pandas)
-    p0_19 = 0
-    p20_44 = 0
-    p45_64 = 0
-    p65_74 = 0
-    p75_84 = 0
-    p85_p = 0
-    for i in range(len(key_list)):
-        if 4 < i < 8:
-            p0_19 += int(a[key_list[i]])
-        elif 7 < i < 13:
-            p20_44 += int(a[key_list[i]])
-        elif 12 < i < 17:
-            p45_64 += int(a[key_list[i]])
-        elif 16 < i < 19:
-            p65_74 += int(a[key_list[i]])
-        elif 18 < i < 21:
-            p75_84 += int(a[key_list[i]])
-        else:
-            p85_p = int(a[key_list[21]])
-    p = [p0_19, p20_44, p45_64, p65_74, p75_84, p85_p]
-    print('the p value is', p)
-    rates = []
+    # TODO TODO very temporary START
+    # bed_ratio = counties[0][3] / counties[0][2]
+    bed_ratio = 7793 / 2_003_554  # Bexar beds / Bexar population
+    for c in counties:
+        if len(c) == 3:
+            c.append(c[-1] * bed_ratio)
+    # TODO TODO very temporary END
+else:
+    # Determine the 5 biggest county case rates in these 5 states:
+    # NY, NJ, CA, MI, PA, TX
+    counties = [
+        # county, state, population, hospital beds
+        # ['New York City', 'New York', 8.0e6, 32000],
+        # ['Bexar', 'Texas', 1.99e6, 7793],
+        ['Bexar', 'Texas', 2.00e6, 7793],
+    ]
 
-    hr_filename = os.path.join(DATA_DIR, 'covid_hosp_rate_by_age.csv')
-    with open(hr_filename, 'r', encoding='mac_roman') as f:
-        csv_reader = csv.reader(f, delimiter=',')
-        header = next(csv_reader)
-        for row in csv_reader:
-            rates.append(np.asarray(row))
 
-    temp = np.mean(np.asarray(rates).astype(float))
-    hosp_rate = np.sum(np.asarray(p).astype(float) * temp, axis=0)
-    hosp_rate /= a[key_list[3]]
-    # with open('US_County_AgeGrp_2018.csv', 'rb') as f:
-    #     txt = f.read().decode('iso-8859-1').encode('utf-8')
-    #     open("temp.csv", "w").write(str(txt))
-    #     csv_reader = csv.reader(open('temp.csv','r'), delimiter=',')
-    #     header = next(csv_reader)
-    #     for row in csv_reader:
-    #         print(row[2])
-    #         if (row[2] == '{} County'.format(county_name) and
-    #               row[1] == state_name):
-    #             p0_19 = row[4] + row[5] + row[6] + row[7]
-    #             p20_44 = row[8] + row[9] + row[10] + row[11] + row[12]
-    #             p45_64 = row[13] + row[14] + row[15] + row[16]
-    #             p65_74 = row[17] + row[18]
-    #             p75_84 = row[19] + row[20]
-    #             p85_p  = row[21]
-    #             p = [p0_19, p20_44, p45_64, p65_74, p75_84, p85_p]
-    #             print (p, "******************")
-    #     rates = []
-    #     with open('covid_hosp_rate_by_age.csv', 'r',
-    #               encoding='mac_roman') as f:
-    #         csv_reader = csv.reader(f, delimiter=',')
-    #         header = next(csv_reader)
-    #         for row in csv_reader:
-    #             rates.append(np.array(row))
-    #     if not p:
-    #         print ("p is empty")
-    #     else:
-    #         hosp_rate = (np.sum(np.array(p).astype(float) *
-    #                             np.mean(np.array(rates).astype(float),axis=0)))
+def main(Xs, Ys, names=None):
+    global hosp_rate
 
-    # hosp_rate = 0.20
+    if TRAIN_MULTIPLE:
+        # TODO: THINGS MOVED OUT OF COUNTY FOR LOOP HERE - ZACH DO NOT COMMIT YET.
+        #  DEFINITELY DO NOT PUSH.
+        n_samples = len(Xs)
+        data_idxs = list(range(n_samples))
+        random.shuffle(data_idxs)
+        train_frac = 0.5
+        split_idx = max(int(n_samples * train_frac), 1)
 
-    ###################### Formatting Data ######################
-    #############################################################
-    # Data is 6 columns of mobility, 1 column of case number
-    data = np.asarray(data).astype(np.float32)
-    data = data[5:, :]  # Skip 5 days until we have 10+ patients
+        Xs_train = [Xs[idx] for idx in data_idxs[:split_idx]]
+        Ys_train = [Ys[idx] for idx in data_idxs[:split_idx]]
+        names_train = [names[idx] for idx in data_idxs[:split_idx]]
 
-    data[:, :6] = (
-            1.0 + data[:, :6] / 100.0
-    )  # convert percentages of change to fractions of activity
-    print('data.shape', data.shape)
+        Xs_test = [Xs[idx] for idx in data_idxs[split_idx:]]
+        Ys_test = [Ys[idx] for idx in data_idxs[split_idx:]]
+        names_test = [names[idx] for idx in data_idxs[split_idx:]]
 
-    # Split into input and output data
-    X, Y = data[:, :6], data[:, 6]
-    # X is now retail&rec, grocery&pharm, parks, transit_stations, workplace,
-    #   residential
-    # Y is the total number of cases
-    plt.plot(Y)
-    plt.show()
-
-    # divide out population of county
-    Y = Y / population
-    # multiply by suspected under-reporting rate
-    Y = Y / reporting_rate
-    # i0 and e0 (assume incubation of `delay_days`)
-    e0 = Y[0]
-    # e0 minus the gradient between of Y (point at 0 and point at delay_days)
-    # times delay_days = 2 * e0 - Y[delay_days], clip at 0
-    i0 = max(2 * e0 - Y[delay_days], 0)
-    print('e0={} | i0={}'.format(e0, i0))
-    # To Torch on device
-    X = torch.from_numpy(X).to(device=device)
-    Y = torch.from_numpy(Y).to(device=device)
-
-    # Add batch dimension
-    X = X.reshape(X.shape[0], 1, X.shape[1])  # time x batch x channels
-    Y = Y.reshape(Y.shape[0], 1, 1)  # time x batch x channels
-
+        print('{} training samples, {} testing samples'.format(
+            len(Xs_train), len(Xs_test)))
+    else:
+        X, Y = Xs, Ys
 
     def build_model(e0, i0, b_lstm=False, update_k=False):
         model = torch.nn.Sequential()
         model.add_module('SEIRNet', SIRNet.SEIRNet(e0=e0, i0=i0, b_lstm=b_lstm,
                                                    update_k=update_k))
         return model.to(device=device)
-
 
     def train(model, loss, optimizer, x, y, log_loss=True):
         optimizer.zero_grad()
@@ -334,7 +196,6 @@ for county_data in counties:
         #        param.data.clamp_(1e-4)
         return output.data.item()
 
-
     ##################### Build and Train Model #################
     #############################################################
     TRY_LSTM = False
@@ -345,9 +206,12 @@ for county_data in counties:
     loss = torch.nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.01)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=4000, gamma=0.1)
-    batch_size = Y.shape[0]
+    # batch_size = Y.shape[0]
     torch.autograd.set_detect_anomaly(True)
-    weights_name = '{}_weights.pt'.format(county_name)
+    if TRAIN_MULTIPLE:
+        weights_name = '{}_weights_multiple.pt'.format(state_name)
+    else:
+        weights_name = '{}_weights.pt'.format(county_name)
 
     if not os.path.exists(weights_name):
         iters = 1000
@@ -356,17 +220,39 @@ for county_data in counties:
         iters = 1000
 
     for i in range(iters):
-        cost = 0.
-        num_batches = math.ceil(len(X) / batch_size)
-        for k in range(num_batches):
-            start, end = k * batch_size, (k + 1) * batch_size
-            cost += train(model, loss, optimizer, X[start:end], Y[start:end])
-        if i % 100 == 0:
-            print("Epoch = %d, cost = %s" % (i + 1, cost / num_batches))
-            print('The model fit is: ')
-            for name, param in model.named_parameters():
-                print(name, param.data)
-        scheduler.step()
+        if TRAIN_MULTIPLE:
+            iterator = zip(Xs_train, Ys_train)
+        else:
+            iterator = zip([X], [Y])
+        for X, Y in iterator:
+            batch_size = Y.shape[0]  # TODO
+            cost = 0.
+            num_batches = math.ceil(len(X) / batch_size)
+            for k in range(num_batches):
+                start, end = k * batch_size, (k + 1) * batch_size
+                cost += train(model, loss, optimizer, X[start:end],
+                              Y[start:end])
+            if i % 100 == 0:
+                print('Epoch = %d, cost = %s' % (i + 1, cost / num_batches))
+                print('The model fit is: ')
+                for name, param in model.named_parameters():
+                    print(name, param.data)
+            scheduler.step()
+
+    if TRAIN_MULTIPLE:
+        def mean_squared_error_samplewise(y_pred, y_true):
+            assert len(y_pred) == len(y_true)
+            for yp, yt in zip(y_pred, y_true):
+                pass
+
+        def mean_squared_error_elementwise(y_pred, y_true):
+            assert len(y_pred) == len(y_true)
+
+        for X, Y in zip(Xs_train, Ys_train):
+            pass
+
+        for X, Y in zip(Xs_test, Ys_test):
+            pass
 
     torch.save(model.state_dict(), weights_name)
 
@@ -531,9 +417,225 @@ for county_data in counties:
         # np.save(str, data)
         np.save('Average Case {}.npy'.format(cases[i]), data)
 
-legend_list = ['Current Mobility', '20% Mobility', '50% Mobility',
-               'Normal Mobility']
-data_list, day_list = fp.get_arrays(fp.get_scenario_dict(fp.scenario_list),
-                                    fp.scenario_list, fp.population)
-fp.plot_data(data_list, day_list, legend_list, 0)
-fp.plot_data(data_list, day_list, legend_list, 1)
+    legend_list = ['Current Mobility', '20% Mobility', '50% Mobility',
+                   'Normal Mobility']
+    data_list, day_list = fp.get_arrays(fp.get_scenario_dict(fp.scenario_list),
+                                        fp.scenario_list, fp.population)
+    fp.plot_data(data_list, day_list, legend_list, 0)
+    fp.plot_data(data_list, day_list, legend_list, 1)
+
+
+## Iterate through counties ##
+##############################
+Xs, Ys, names = [], [], []
+for county_data in counties:
+    county_name, state_name, population, beds = county_data
+
+    ############### Loading data #########################
+    ######################################################
+
+    # Load US County cases data
+    cases = OrderedDict()
+    with open('us-counties.csv', 'r') as f:
+        csv_reader = csv.reader(f, delimiter=',')
+        for row in csv_reader:
+            if row[1] == county_name and row[2] == state_name:
+                cases[row[0]] = row[4]  # cases by date
+
+    # Shift case data assuming it lags actual by 10 days
+    shift_cases = OrderedDict()
+    for i in range(len(cases.keys()) - delay_days):
+        k = list(cases.keys())[i]
+        k10 = list(cases.keys())[i + delay_days]
+        shift_cases[k] = cases[k10]
+    cases = shift_cases
+
+    # Load Activity Data
+    state_path = os.path.join(DATA_DIR, 'Mobility data',
+                              '{}_mobility.csv'.format(state_name))
+    mkeys = ['Retail & recreation', 'Grocery & pharmacy', 'Parks',
+             'Transit stations', 'Workplace', 'Residential']
+
+    if os.path.exists(state_path):
+        row1_filt = state_name
+        row2_filt = lambda s: s.replace(' County', '') == county_name
+    else:
+        print('No county-level mobility available.  Reverting to state')
+        state_path = os.path.join(DATA_DIR, 'Mobility data', 'US_mobility.csv')
+        row1_filt = 'US'
+        row2_filt = lambda s: s == state_name
+
+    mobilities = {}
+    for category in mkeys:
+        mobilities[category] = OrderedDict()
+        with open(state_path, 'r') as f:
+            csv_reader = csv.reader(f, delimiter=',')
+            header = next(csv_reader)
+            for row in csv_reader:
+                if (row[1] == row1_filt and row2_filt(row[2]) and
+                        row[3] == category):
+                    dates = eval(row[6])
+                    vals = eval(row[7])
+                    for i, date in enumerate(dates):
+                        mobilities[category][date] = vals[i]
+    # TODO
+    if any(not mobilities[k] for k in mobilities):
+        print('WARN: skipping {}, {} because it does not have all mobility '
+              'categories'.format(county_name, state_name))
+        continue
+    else:
+        print('INFO: Beginning {}, {}'.format(county_name, state_name))
+
+    # Rearrange activity data
+    mobility = OrderedDict()
+    dates = list(mobilities['Retail & recreation'].keys())
+    for i, date in enumerate(dates):
+        # NOTE: some dates are missing in the data, so we fall back to the
+        #  previous day's data here
+        def k_by_date_or_fallback(k):
+            j = i  # start with current date
+            while j >= 0:
+                date_or_fallback = dates[j]
+                if mobilities[k].get(date_or_fallback) is not None:
+                    return mobilities[k][date_or_fallback]
+                j -= 1
+            raise ValueError('Data did not have a valid fallback date.')
+
+
+        mobility[date] = [k_by_date_or_fallback(k) for k in mkeys]
+
+    # Common Case Data + Activity Data Dates
+    data = []
+    common_dates = []
+    for k in cases.keys():
+        if k not in mobility.keys():
+            continue
+        data.append(mobility[k] + [cases[k]])  # total cases
+
+    # Estimate hospitalization rate
+    p = []
+    df = pd.read_csv(
+        os.path.join(DATA_DIR, 'US_County_AgeGrp_2018.csv'),
+        encoding="cp1252"
+    )
+    a = df.loc[(df['STNAME'] == state_name) &
+               (df['CTYNAME'] == county_name + ' County')]
+    key_list = []
+    for keys in a.keys():
+        key_list.append(keys)
+    print(key_list)
+
+    # TODO: comment these (or make more efficient via pandas)
+    p0_19 = 0
+    p20_44 = 0
+    p45_64 = 0
+    p65_74 = 0
+    p75_84 = 0
+    p85_p = 0
+    for i in range(len(key_list)):
+        if 4 < i < 8:
+            p0_19 += int(a[key_list[i]])
+        elif 7 < i < 13:
+            p20_44 += int(a[key_list[i]])
+        elif 12 < i < 17:
+            p45_64 += int(a[key_list[i]])
+        elif 16 < i < 19:
+            p65_74 += int(a[key_list[i]])
+        elif 18 < i < 21:
+            p75_84 += int(a[key_list[i]])
+        else:
+            p85_p = int(a[key_list[21]])
+    p = [p0_19, p20_44, p45_64, p65_74, p75_84, p85_p]
+    print('the p value is', p)
+    rates = []
+
+    hr_filename = os.path.join(DATA_DIR, 'covid_hosp_rate_by_age.csv')
+    with open(hr_filename, 'r', encoding='mac_roman') as f:
+        csv_reader = csv.reader(f, delimiter=',')
+        header = next(csv_reader)
+        for row in csv_reader:
+            rates.append(np.asarray(row))
+
+    temp = np.mean(np.asarray(rates).astype(float))
+    hosp_rate = np.sum(np.asarray(p).astype(float) * temp, axis=0)
+    hosp_rate /= a[key_list[3]]
+    # with open('US_County_AgeGrp_2018.csv', 'rb') as f:
+    #     txt = f.read().decode('iso-8859-1').encode('utf-8')
+    #     open("temp.csv", "w").write(str(txt))
+    #     csv_reader = csv.reader(open('temp.csv','r'), delimiter=',')
+    #     header = next(csv_reader)
+    #     for row in csv_reader:
+    #         print(row[2])
+    #         if (row[2] == '{} County'.format(county_name) and
+    #               row[1] == state_name):
+    #             p0_19 = row[4] + row[5] + row[6] + row[7]
+    #             p20_44 = row[8] + row[9] + row[10] + row[11] + row[12]
+    #             p45_64 = row[13] + row[14] + row[15] + row[16]
+    #             p65_74 = row[17] + row[18]
+    #             p75_84 = row[19] + row[20]
+    #             p85_p  = row[21]
+    #             p = [p0_19, p20_44, p45_64, p65_74, p75_84, p85_p]
+    #             print (p, "******************")
+    #     rates = []
+    #     with open('covid_hosp_rate_by_age.csv', 'r',
+    #               encoding='mac_roman') as f:
+    #         csv_reader = csv.reader(f, delimiter=',')
+    #         header = next(csv_reader)
+    #         for row in csv_reader:
+    #             rates.append(np.array(row))
+    #     if not p:
+    #         print ("p is empty")
+    #     else:
+    #         hosp_rate = (np.sum(np.array(p).astype(float) *
+    #                             np.mean(np.array(rates).astype(float),axis=0)))
+
+    # hosp_rate = 0.20
+
+    ###################### Formatting Data ######################
+    #############################################################
+    # Data is 6 columns of mobility, 1 column of case number
+    data = np.asarray(data).astype(np.float32)
+    data = data[5:, :]  # Skip 5 days until we have 10+ patients
+
+    data[:, :6] = (
+            1.0 + data[:, :6] / 100.0
+    )  # convert percentages of change to fractions of activity
+    print('data.shape', data.shape)
+
+    # Split into input and output data
+    X, Y = data[:, :6], data[:, 6]
+    # X is now retail&rec, grocery&pharm, parks, transit_stations, workplace,
+    #   residential
+    # Y is the total number of cases
+    plt.plot(Y)
+    plt.show()
+
+    # divide out population of county
+    Y = Y / population
+    # multiply by suspected under-reporting rate
+    Y = Y / reporting_rate
+    # i0 and e0 (assume incubation of `delay_days`)
+    e0 = Y[0]
+    # e0 minus the gradient between of Y (point at 0 and point at delay_days)
+    # times delay_days = 2 * e0 - Y[delay_days], clip at 0
+    i0 = max(2 * e0 - Y[delay_days], 0)
+    print('e0={} | i0={}'.format(e0, i0))
+    # To Torch on device
+    X = torch.from_numpy(X).to(device=device)
+    Y = torch.from_numpy(Y).to(device=device)
+
+    # Add batch dimension
+    X = X.reshape(X.shape[0], 1, X.shape[1])  # time x batch x channels
+    Y = Y.reshape(Y.shape[0], 1, 1)  # time x batch x channels
+
+    # \ COMBINE TO ONE DATA SET
+    if TRAIN_MULTIPLE:
+        Xs.append(X)
+        Ys.append(Y)
+        names.append(county_name + state_name)
+
+    if not TRAIN_MULTIPLE:
+        main(X, Y)
+
+if TRAIN_MULTIPLE:
+    main(Xs, Ys, names)
