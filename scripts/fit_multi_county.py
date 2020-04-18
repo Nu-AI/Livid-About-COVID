@@ -214,7 +214,7 @@ def main(Xs, Ys, names=None):
             output = loss.forward(fx, y)
         output.backward()
         optimizer.step()
-        #for name, param in model.named_parameters():
+        # for name, param in model.named_parameters():
         #    if name == "SEIRNet.i2b.weight":
         #      param.data.clamp_(1e-4)
         return output.data.item()

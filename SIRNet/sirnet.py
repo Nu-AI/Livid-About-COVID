@@ -178,9 +178,10 @@ class SEIRNet(torch.nn.Module):
                 b = torch.relu(self.l2b(b_inter.squeeze(dim=1)))
                 b = b.squeeze()
             else:
+                # TODO: comment this! Idk what exactly this is...
                 xm = X[t].clone()
-                xm[0,5] = 0
-                #b = torch.clamp( torch.exp(self.i2b(xm**2)), 0) # predicting the log of the contact rate as a linear combination of mobility squared
+                xm[0, 5] = 0
+                # b = torch.clamp(torch.exp(self.i2b(xm**2)), 0) # predicting the log of the contact rate as a linear combination of mobility squared
                 # b = 2.2 # should be the value of b under normal mobility.  Kucharski et al
                 # b = 5.0 * .2 * torch.sigmoid(self.i2b(X[t])) # would max out b at 2.2- maybe not a good idea
                 b = torch.clamp(self.i2b(xm), 0) ** self.p  # best so far

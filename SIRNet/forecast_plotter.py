@@ -16,7 +16,7 @@ RESULTS_DIR = os.path.join(ROOT_DIR, 'Prediction_results')
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
-#pd.set_option('display.max_colwidth', None)
+# pd.set_option('display.max_colwidth', None)
 
 # # scenario_list = ['Current Mobility', '20% Return to Normal',
 #                  '50% Return to Normal', 'Return to Normal Mobility']
