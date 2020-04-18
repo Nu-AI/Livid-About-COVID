@@ -44,7 +44,7 @@ from SIRNet import forecast_plotter as fp
 # reporting_rate = 0.20  # Portion of cases that are actually detected
 reporting_rate = 0.60  # Portion of cases that are actually detected
 # delay_days = 4         # Days between becoming infected / positive confirmation (due to incubation period / testing latency
-delay_days = 3         # Days between becoming infected / positive confirmation (due to incubation period / testing latency
+delay_days = 10         # Days between becoming infected / positive confirmation (due to incubation period / testing latency
 bed_pct = 0.40         # Portion of hospital beds that can be allocated for Covid-19 patients
 hosp_rate = 0.20       # Portion of cases that result in hospitalization
 # @formatter:on
@@ -152,7 +152,7 @@ if TRAIN_MULTIPLE:
 
     # TODO TODO very temporary START
     # bed_ratio = counties[0][3] / counties[0][2]
-    bed_ratio = 7793 / 2_003_554  # Bexar beds / Bexar population
+    bed_ratio = 7793 / 2003554  # Bexar beds / Bexar population
     for c in counties:
         if len(c) == 3:
             c.append(c[-1] * bed_ratio)
@@ -212,9 +212,9 @@ def main(Xs, Ys, names=None):
             output = loss.forward(fx, y)
         output.backward()
         optimizer.step()
-        # for name, param in model.named_parameters():
-        #    if name != "name.h2o.weight":
-        #        param.data.clamp_(1e-4)
+        #for name, param in model.named_parameters():
+        #    if name == "SEIRNet.i2b.weight":
+        #      param.data.clamp_(1e-4)
         return output.data.item()
 
     ##################### Build and Train Model #################
