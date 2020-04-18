@@ -15,7 +15,6 @@ import matplotlib.pyplot as plt
 import torch
 from torch import optim
 
-
 # root of workspace
 ROOT_DIR = os.path.join(os.path.dirname(__file__), '..')
 sys.path.append(ROOT_DIR)
@@ -23,11 +22,13 @@ sys.path.append(ROOT_DIR)
 DATA_DIR = os.path.join(ROOT_DIR, 'data')
 
 # TODO review naming scheme of directory
+# directory of model weights
 WEIGHTS_DIR = os.path.join(ROOT_DIR, 'model_weights')
 if not os.path.exists(WEIGHTS_DIR):
     os.mkdir(WEIGHTS_DIR)
 
 # TODO review decision to have this directory (at least naming scheme)
+# directory of results
 RESULTS_DIR = os.path.join(ROOT_DIR, 'Prediction_results')
 if not os.path.exists(RESULTS_DIR):
     os.mkdir(RESULTS_DIR)
