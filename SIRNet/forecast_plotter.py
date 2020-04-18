@@ -1,16 +1,22 @@
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import seaborn as sns
-import matplotlib.ticker as mtick
-import matplotlib as mpl
-
+import os
 from datetime import datetime, timedelta
 from collections import OrderedDict
 
+import numpy as np
+import pandas as pd
+
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
+import matplotlib as mpl
+import seaborn as sns
+
+ROOT_DIR = os.path.join(os.path.dirname(__file__), '..')
+
+RESULTS_DIR = os.path.join(ROOT_DIR, 'Prediction_results')
+
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
-pd.set_option('display.max_colwidth', -1)
+pd.set_option('display.max_colwidth', None)
 
 scenario_list = ['Current Mobility', '20% Return to Normal',
                  '50% Return to Normal', 'Return to Normal Mobility']
@@ -20,8 +26,9 @@ def get_predictions(path):
     return np.load(path, allow_pickle=True)
 
 
-def get_scenario_dict(scenario_list):
-    pathlist = ["Average Case " + i + '.npy' for i in scenario_list]
+def get_scenario_dict(scenario_list, county_name):
+    string = os.path.join(RESULTS_DIR, "Average Case ")
+    pathlist = [string + i + '.npy' for i in scenario_list]
     # pathlist = ["Average Case " + i + county_name + '.npy' for i in
     #             scenario_list]
     dict = {}
@@ -216,7 +223,7 @@ def plot_data(data_list, day_list, legend_list, gridplot):
         # fig.text(0.05, 0.5, 'Percent change', va='center', rotation='vertical', **axis_font)
         # fig.tight_layout()
         # plt.savefig("_split_plots.pdf", orientation='portrait')
-        plt.show(fig)
+        plt.show()
 
 # legend_list = ['Current Mobility', '20% Mobility', '50% Mobility', 'Normal Mobility']
 # data_list, day_list = get_arrays(get_scenario_dict(scenario_list), scenario_list,population)

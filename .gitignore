@@ -16,6 +16,7 @@ zach_data/
 mobility_pdfs/
 notebooks/*.csv
 /notes/
+.~lock.*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
