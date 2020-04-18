@@ -157,7 +157,7 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None):
                      color=color_list[i], linewidth=linewidth)
 
         if gt_arr is not None:
-            plt.plot(day_arr[:len(gt_arr)], gt_arr, label='Ground Truth')
+            plt.plot(day_arr[:len(gt_arr)], gt_arr, 'o', label='Ground Truth')
 
         plt.xlabel(xlabel, **sp_label_font, labelpad=x_labelpad)
         plt.ylabel(ylabel, **sp_label_font, labelpad=y_labelpad)

@@ -243,7 +243,7 @@ def main(Xs, Ys, names=None):
     else:
         model.load_state_dict(torch.load(weights_name))
         iters = 1000
-        iters = 0
+        # iters = 0
 
     for i in range(iters):
         if TRAIN_MULTIPLE:
