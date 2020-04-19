@@ -242,7 +242,7 @@ def main(Xs, Ys, names=None):
         iters = 1000
     else:
         model.load_state_dict(torch.load(weights_name))
-        iters = 1000
+        iters = 0
         # iters = 0
 
     for i in range(iters):
@@ -458,7 +458,7 @@ def main(Xs, Ys, names=None):
     )
     # fp.plot_data(data_list, day_list, legend_list, 0)
     # fp.plot_data(data_list, day_list, legend_list, 1)
-    fp.plot_data(data_list, day_list, legend_list, 0, Y)
+    fp.plot_data(data_list, day_list, legend_list, 0, Y*fp.population*reporting_rate)
 
 
 ## Iterate through counties ##

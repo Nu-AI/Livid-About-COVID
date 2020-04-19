@@ -181,6 +181,7 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None):
             manager.window.showMaximized()
         # plt.tight_layout(pad=0.5)
         # plt.savefig("Bexar_total.pdf")
+        plt.ylim((0, 2*gt_arr[-1]))
         plt.show()
 
     else:
