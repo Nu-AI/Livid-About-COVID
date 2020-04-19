@@ -86,59 +86,6 @@ if not os.path.exists('us-counties.csv'):
         'us-states.csv'
     )
 
-# # Anurag's addition
-# # Determine the 5 biggest county case rates in these 5 states:
-# def get_county_state_dict(path):
-#     top5_df = pd.read_excel(path)
-#
-#     state_list = top5_df['State'].unique().tolist()
-#
-#     county_dict = {}
-#     for state in state_list:
-#         county_dict[state] = top5_df[top5_df['State'] == state][
-#             'Counties'].tolist()
-#     return pd.DataFrame.from_dict(county_dict)
-#
-#
-# def get_population_dict(path):
-#     df = pd.read_excel(path, skiprows=2, skipfooter=5)
-#     new_df = df[['Geographic Area', 'Unnamed: 12']].reset_index().iloc[
-#              1:].reset_index()
-#     Area_list = new_df['Geographic Area']
-#     area_list = [i.split(',')[0].split(' ')[0].replace('.', '') for i in
-#                  Area_list]
-#     new_df['Geographic Area'] = area_list
-#     return new_df
-#
-#
-# state_name = 'Texas'
-# county_df = get_county_state_dict(path='Top5counties.xlsx')
-#
-# pop_df = get_population_dict(
-#     "https://www2.census.gov/programs-surveys/popest/tables/2010-2019"
-#     "/counties/totals/co-est2019-annres-48.xlsx"
-# )
-#
-#
-# # NY, NJ, CA, MI, PA, TX
-# def get_county_pop_list(county_df, pop_df):
-#     county_list = county_df[state_name].tolist()
-#     new_pop_df = pop_df[pop_df['Geographic Area'].isin(county_list)]
-#     pop_list = new_pop_df['Unnamed: 12'].tolist()
-#     return county_list, pop_list
-#
-#
-# county_list, pop_list = get_county_pop_list(county_df, pop_df)
-# counties = []
-# hospital_beds = [19000, 14000, 5000, 5000, 7893]
-# for i in range(len(county_list)):
-#     counties.append([county_list[i], state_name, pop_list[i],
-#                      hospital_beds[i]])
-#
-# from pprint import pprint
-# pprint(counties)
-# sys.exit(0)
-
 # Hospital beds/1k people
 # https://www.kff.org/other/state-indicator/beds-by-ownership/?activeTab=graph&currentTimeframe=0&startTimeframe=19&selectedRows=%7B%22states%22:%7B%22texas%22:%7B%7D%7D%7D&sortModel=%7B%22colId%22:%22Location%22,%22sort%22:%22asc%22%7D
 if TRAIN_MULTIPLE:
@@ -418,7 +365,6 @@ def main(Xs, Ys, names=None):
         # recovered * WHO mortality rate
         #   (recovered is actually recovered + deceased)
         total_deaths = s[:, 1] * 0.034 * reporting_rate * population
-        print('HTF? ', s[-1, 1], 0.034, reporting_rate, population)
 
         fig, axs = plt.subplots(2)
         axs[0].plot(days, active, 'b', days, total, 'r')
@@ -565,13 +511,20 @@ def main(Xs, Ys, names=None):
     #                'Normal Mobility']
     legend_list = ['25% Mobility', 'Normal Mobility', '50% Mobility',
                    '75% Mobility']
+    # data_list, day_list = fp.get_arrays(
+    #     fp.get_scenario_dict(fp.scenario_list, county_name),
+    #     fp.scenario_list, fp.population
+    # )
     data_list, day_list = fp.get_arrays(
         fp.get_scenario_dict(fp.scenario_list, county_name),
-        fp.scenario_list, fp.population
+        fp.scenario_list, population
     )
     # fp.plot_data(data_list, day_list, legend_list, 0)
     # fp.plot_data(data_list, day_list, legend_list, 1)
-    fp.plot_data(data_list, day_list, legend_list, 0, Y, show=not SAVE_PLOTS)
+    # fp.plot_data(data_list, day_list, legend_list, 0,
+    #              Y * fp.population * reporting_rate, show=not SAVE_PLOTS)
+    fp.plot_data(data_list, day_list, legend_list, 0,
+                 Y * population * reporting_rate, show=not SAVE_PLOTS)
     if SAVE_PLOTS:
         plt.savefig(county_name + '_forecast_plotted.pdf')
         plt.close()

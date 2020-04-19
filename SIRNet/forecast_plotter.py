@@ -47,7 +47,7 @@ def get_scenario_dict(scenario_list, county_name):
 # Total Cases (latent)
 # Active Cases (latent)
 
-population = 2003554
+# population = 2003554
 
 
 def get_arrays(dict, scenario_list, population):
@@ -115,14 +115,15 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None,
                   'gray', 'olive', 'cyan']
     map_list = ['a', 'b', 'c', 'd']
     xlabel = "Months"
-    ylabel = "Number of cases (in thousands)"
+    ylabel = "Number of cases"
     x_labelpad = 10
     y_labelpad = 30
 
     xtick_rotation = 45
 
-    dates = ["2020-02-21",
-             "2020-08-21"]  # the range of dates you want the generated list to be
+    dates = ["2020-03-02",
+             "2020-08-31"]  # the range of dates you want the generated list to be
+
     start, end = [datetime.strptime(_, "%Y-%m-%d") for _ in dates]
     labels = lambda x, y: list(OrderedDict(
         ((x + timedelta(_)).strftime(r"%b"), None) for _ in
@@ -182,11 +183,11 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None,
             manager.window.showMaximized()
         # plt.tight_layout(pad=0.5)
         # plt.savefig("Bexar_total.pdf")
+        plt.ylim((0, 2 * gt_arr[-1]))
         if show:
             plt.show()
-
     else:
-        # TODO: this creates a duplicate figure...
+        # TODO: this creates a second figure window...
         fig, ax = plt.subplots(1, 2)
 
         while count_y < 2:
