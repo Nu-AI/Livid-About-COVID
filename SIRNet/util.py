@@ -12,7 +12,12 @@ def to_numpy(tensor, squeeze=True):
     :param squeeze: Whether to squeeze tensor (default: True)
     :return: PyTorch tensor as a NumPy array
     """
-    t_npy = tensor.cpu().detach().numpy()
+    if isinstance(tensor, np.ndarray):
+        warnings.warn('to_numpy was passed tensor, but it is already a NumPy '
+                      'ndarray. Continuing..')
+        t_npy = tensor
+    else:
+        t_npy = tensor.cpu().detach().numpy()
     if squeeze:
         t_npy = np.squeeze(t_npy)
     return t_npy

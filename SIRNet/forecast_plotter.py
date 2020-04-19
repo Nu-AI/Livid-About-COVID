@@ -90,7 +90,8 @@ def get_arrays(dict, scenario_list, population):
     return data_list, day_list
 
 
-def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None):
+def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None,
+              show=True):
     # Plotting parameters
     plt.figure(dpi=100)
     plt.rcParams['axes.linewidth'] = 1
@@ -181,7 +182,8 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None):
             manager.window.showMaximized()
         # plt.tight_layout(pad=0.5)
         # plt.savefig("Bexar_total.pdf")
-        plt.show()
+        if show:
+            plt.show()
 
     else:
         # TODO: this creates a duplicate figure...
@@ -228,7 +230,8 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None):
         # fig.text(0.05, 0.5, 'Percent change', va='center', rotation='vertical', **axis_font)
         # fig.tight_layout()
         # plt.savefig("_split_plots.pdf", orientation='portrait')
-        plt.show()
+        if show:
+            plt.show()
 
 # legend_list = ['Current Mobility', '20% Mobility', '50% Mobility', 'Normal Mobility']
 # data_list, day_list = get_arrays(get_scenario_dict(scenario_list), scenario_list,population)

@@ -3,6 +3,8 @@ import torch
 from torch.nn.parameter import Parameter
 
 
+# TODO: create abstract base class for these two modules, lot of repeat code
+#  here...
 ###################### Defining Model #######################
 #############################################################
 class SIRNet(torch.nn.Module):
@@ -178,7 +180,9 @@ class SEIRNet(torch.nn.Module):
                 b = torch.relu(self.l2b(b_inter.squeeze(dim=1)))
                 b = b.squeeze()
             else:
-                # TODO: comment this! Idk what exactly this is...
+                # Remove residential mobility
+                # TODO: Not right spot for this. Also, should we do this? Figure
+                #  out definition of residential mobility...
                 xm = X[t].clone()
                 xm[0, 5] = 0
                 # b = torch.clamp(torch.exp(self.i2b(xm**2)), 0) # predicting the log of the contact rate as a linear combination of mobility squared
