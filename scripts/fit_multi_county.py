@@ -328,7 +328,6 @@ def main(Xs, Ys, names=None):
         # recovered * WHO mortality rate
         #   (recovered is actually recovered + deceased)
         total_deaths = s[:, 1] * 0.034 * reporting_rate * population
-        print('HTF? ', s[-1, 1], 0.034, reporting_rate, population)
 
         fig, axs = plt.subplots(2)
         axs[0].plot(days, active, 'b', days, total, 'r')
