@@ -98,14 +98,14 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None):
     plt.rcParams['axes.linewidth'] = 1
 
     # fig, ax = plt.subplots()
-    plt.rcParams.update({'font.size': 14, 'legend.labelspacing': 1.3})
+    plt.rcParams.update({'font.size': 16, 'legend.labelspacing': 1.3})
     count_x = 0
     count_y = 0
     max = 0
     x = 0
     sns.set()
     sns.set_style('whitegrid')
-    plt.grid(False)
+    plt.grid(True)
     sns.despine()
     palette = sns.color_palette("mako_r", 6)
     count = 0
@@ -132,16 +132,16 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None):
     max_days = (end - start).days
     xticklabel = labels(start, end)
 
-    legend_size = 7
+    legend_size = 21
 
     # Change the title, axis, label and tick font settings here
-    title_font = {'fontname': 'Arial', 'size': '16', 'color': 'black',
+    title_font = {'fontname': 'Arial', 'size': '24', 'color': 'black',
                   'weight': 'bold',
                   'verticalalignment': 'bottom'}  # Bottom vertical alignment for more space
-    axis_font = {'fontname': 'Arial', 'size': '14', 'weight': 'bold'}
-    sp_label_font = {'fontname': 'Arial', 'size': '15', 'weight': 'bold'}
-    tick_font = {'fontname': 'Arial', 'size': '12', 'weight': 'bold'}
-    label_font = {'fontname': 'Arial', 'size': '13', 'weight': 'bold'}
+    axis_font = {'fontname': 'Arial', 'size': '20', 'weight': 'bold'}
+    sp_label_font = {'fontname': 'Arial', 'size': '16', 'weight': 'bold'}
+    tick_font = {'fontname': 'Arial', 'size': '16', 'weight': 'bold'}
+    label_font = {'fontname': 'Arial', 'size': '16', 'weight': 'bold'}
 
     log_scale = 0
 
@@ -165,6 +165,7 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None):
         plt.xticks(range(0, max_days, int(max_days / len(xticklabel))),
                    xticklabel, rotation=xtick_rotation,
                    **tick_font)
+        plt.yticks(fontsize=16)
         if log_scale:
             plt.yscale('log')
         # plt.yticks(np.arange(0, 1000000, 200000), [0, 200, 400, 600, 800],
