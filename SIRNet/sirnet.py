@@ -107,8 +107,6 @@ class SEIRNet(torch.nn.Module):
             [[7.3690e-02, 1.0000e-04, 1.0000e-04, 6.5169e-02, 1.4331e-01,
               2.9631e-03]], dtype=torch.float32
         )
-        # k_init = torch.tensor([[.11]], dtype=torch.float32)
-        # s_init = torch.tensor([[.20]], dtype=torch.float32)
 
         # gamma - 5 day (3-7 day) average duration of infection: Woelfel et al
         self.k = Parameter(torch.tensor([[.20]], dtype=torch.float32),
@@ -130,9 +128,6 @@ class SEIRNet(torch.nn.Module):
                             requires_grad=False)
 
         # self.p.requires_grad = False
-
-        # if not update_k:  # TODO: disable for now as k is a float...
-        #     self.k.requires_grad = False
 
         if b_lstm:
             print('\nb: Using LSTM\n')
