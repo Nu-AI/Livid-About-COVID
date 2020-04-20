@@ -110,7 +110,6 @@ class data_retriever():
         return final_pop_df
 
 
-
 def get_data(paramdict):
     data = data_retriever(country=paramdict['country'], states = paramdict['states'], counties = paramdict['counties'])
     df_required = data.get_mobility_data()
@@ -118,7 +117,34 @@ def get_data(paramdict):
     pop_df = data.get_population_data(df_required)
 
     pop_df = pop_df.reset_index(drop=True)
-    print (pop_df, df_required)
+    pop_df = pop_df[['State', 'Geographic Area', 'Unnamed: 12']]
+    county_list = pop_df.values.tolist()
+    pop_df.rename(columns={
+        'State' : 'State',
+        'Geographic Area' : 'County',
+        'Unnamed: 12': 'Population'
+    }, inplace=True)
+
+
+    df_required.rename(columns = {
+        'index'                                             : 'Index',
+        'country_region'                                    : 'Country',
+        'sub_region_1'                                      : 'State',
+        'sub_region_2'                                      : 'County',
+        'date'                                              : 'date',
+        'retail_and_recreation_percent_change_from_baseline': 'Retail & recreation',
+        'grocery_and_pharmacy_percent_change_from_baseline' : 'Grocery & pharmacy',
+        'parks_percent_change_from_baseline'                : 'Parks',
+        'transit_stations_percent_change_from_baseline'     : 'Transit stations',
+        'workplaces_percent_change_from_baseline'           : 'Workplace',
+        'residential_percent_change_from_baseline'          : 'Residential'}, inplace=True)
+
+
+
+    df_required = df_required[['Index', 'Country', 'State', 'County', 'date', 'Retail & recreation', 'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace','Residential']]
+
+
+    print(pop_df, df_required.keys())
     # Uncomment to save as csvs
     # pop_df.to_csv("formatted_population.csv")
     # df_required.to_csv("formatted_mobility.csv")
