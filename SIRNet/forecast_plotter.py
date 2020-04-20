@@ -18,6 +18,13 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 # pd.set_option('display.max_colwidth', None)
 
+plt.rcParams['axes.linewidth'] = 1
+plt.rcParams.update({'font.size': 14, 'legend.labelspacing': 1.3})
+sns.set()
+sns.set_style('whitegrid')
+plt.grid(False)
+sns.despine()
+
 # # scenario_list = ['Current Mobility', '20% Return to Normal',
 #                  '50% Return to Normal', 'Return to Normal Mobility']
 scenario_list = ['20% Mobility', 'Normal Mobility', '50% Mobility',
@@ -94,20 +101,11 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None,
               show=True):
     # Plotting parameters
     plt.figure(dpi=100)
-    plt.rcParams['axes.linewidth'] = 1
-
-    # fig, ax = plt.subplots()
-    plt.rcParams.update({'font.size': 14, 'legend.labelspacing': 1.3})
+    palette = sns.color_palette("mako_r", 6)
     count_x = 0
     count_y = 0
     max = 0
     x = 0
-    sns.set()
-    sns.set_style('whitegrid')
-    plt.grid(False)
-    sns.despine()
-    palette = sns.color_palette("mako_r", 6)
-    count = 0
 
     # Set of tunable parameters for the plots
     linewidth = 2
@@ -121,8 +119,8 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None,
 
     xtick_rotation = 45
 
-    dates = ["2020-03-02",
-             "2020-08-31"]  # the range of dates you want the generated list to be
+    # the range of dates you want the generated list to be TODO other places...
+    dates = ["2020-03-02", "2020-08-31"]
 
     start, end = [datetime.strptime(_, "%Y-%m-%d") for _ in dates]
     labels = lambda x, y: list(OrderedDict(

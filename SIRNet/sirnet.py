@@ -188,10 +188,11 @@ class SEIRNet(torch.nn.Module):
                 # b = torch.clamp(torch.exp(self.i2b(xm**2)), 0) # predicting the log of the contact rate as a linear combination of mobility squared
                 # b = 2.2 # should be the value of b under normal mobility.  Kucharski et al
                 # b = 5.0 * .2 * torch.sigmoid(self.i2b(X[t])) # would max out b at 2.2- maybe not a good idea
-                b = torch.clamp(self.i2b(xm), 0) ** self.p  # best so far
                 # b = 2.2 - 2.2 * torch.tanh(self.i2b(X[t]))  # nope
                 # b = 2.2 - 2.2 * torch.tanh(self.i2b(X[t]) ** self.p)  # nope
                 # b = self.q * torch.norm(X[t, 0, :5]) ** self.p
+                # b = torch.clamp(self.i2b(xm), 0) ** self.p  # best so far
+                b = torch.relu(self.i2b(xm)) ** self.p  # same as above line
 
             # update the hidden state SIR model (states are I R S E)
             # @formatter:off

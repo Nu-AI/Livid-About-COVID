@@ -88,6 +88,7 @@ if not os.path.exists('us-counties.csv'):
 
 # Hospital beds/1k people
 # https://www.kff.org/other/state-indicator/beds-by-ownership/?activeTab=graph&currentTimeframe=0&startTimeframe=19&selectedRows=%7B%22states%22:%7B%22texas%22:%7B%7D%7D%7D&sortModel=%7B%22colId%22:%22Location%22,%22sort%22:%22asc%22%7D
+# https://data.worldbank.org/indicator/sh.med.beds.zs
 if TRAIN_MULTIPLE:
     # TODO: bring in hosp. bed for these rows...
     df = pd.read_excel(
@@ -152,8 +153,6 @@ def main(Xs, Ys, names=None):
     global hosp_rate
 
     if TRAIN_MULTIPLE:
-        # TODO: THINGS MOVED OUT OF COUNTY FOR LOOP HERE - ZACH DO NOT COMMIT YET.
-        #  DEFINITELY DO NOT PUSH.
         n_samples = len(Xs)
         data_idxs = list(range(n_samples))
         random.shuffle(data_idxs)
@@ -222,7 +221,7 @@ def main(Xs, Ys, names=None):
         # iters = 0
 
     # print([np.isnan(util.to_numpy(x)).any() for x in Xs])
-
+    # TODO: COMAL COUNTY, TX, GIVES AN ERROR WITH POWER FUNCTION WHY
     for i in range(iters):
         if TRAIN_MULTIPLE:
             iterator = zip(Xs_train, Ys_train)
@@ -236,7 +235,7 @@ def main(Xs, Ys, names=None):
                 start, end = k * batch_size, (k + 1) * batch_size
                 cost += train(model, loss, optimizer, X[start:end],
                               Y[start:end])
-            if i % 100 == 0 or True:
+            if i % 100 == 0:
                 print('Epoch = %d, cost = %s' % (i + 1, cost / num_batches))
                 print('The model fit is: ')
                 for name, param in model.named_parameters():
@@ -315,20 +314,24 @@ def main(Xs, Ys, names=None):
 
         # Plot the total cases
         if TRAIN_MULTIPLE:
-            name = plot_names[i]
-            plt.title('Cases for {}'.format(name))
+            name_for_cases = plot_names[i]
         else:
-            plt.title('Cases')
+            name_for_cases = county_name
+        if SAVE_PLOTS:
+            plt.figure(figsize=(3.2, 2.4))
+        plt.title('Cases ({})'.format(name_for_cases))
         plt.xlabel('Day')
         plt.ylabel('Cases')
+        plt.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
         Y = util.to_numpy(Y)  # Torch -> NumPy and squeeze
         pcs = plt.plot(range(Y.shape[0]), Y, 'r',
                        range(Y.shape[0]), YY, 'g')
-        plt.legend(pcs, ['Ground Truth', 'Predicted'])
         if SAVE_PLOTS:
+            plt.tight_layout()
             plt.savefig(county_name + '_day_cases_gt_predicted.pdf')
             plt.close()
         else:
+            plt.legend(pcs, ['Ground Truth', 'Predicted'])
             plt.show()
 
     if TRAIN_MULTIPLE:
