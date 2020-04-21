@@ -18,7 +18,7 @@ pd.set_option('display.max_colwidth', -1)
 defaultParams={
     'country': 'United States',         # Can be only one country
     'states' : ['Texas', 'Washington'],               # Can enter either one or multiple state
-    'counties' : ['Bexar County', 'Dallas County', 'King County']    # Can enter multiple or one county. If all counties are required, fill in 'all'
+    'counties' : ['Bexar County', 'King County']    # Can enter multiple or one county. If all counties are required, fill in 'all'
 }
 
 class data_retriever():
@@ -65,7 +65,6 @@ class data_retriever():
             return df_required
 
     #Get the lookup table for getting population data
-
     @staticmethod
     def get_lookup_table():
         states = "Alabama Alaska Arizona Arkansas California Colorado Connecticut Delaware Florida Georgia Hawaii Idaho Illinois Indiana Iowa Kansas Kentucky Louisiana Maine Maryland Massachusetts Michigan Minnesota Mississippi Missouri Montana Nebraska Nevada New_Hampshire New_Jersey New_Mexico New_York North_Carolina North_Dakota Ohio Oklahoma Oregon Pennsylvania Rhode_Island South_Carolina South_Dakota Tennessee Texas Utah Vermont Virginia Washington West_Virginia Wisconsin Wyoming"
@@ -81,59 +80,85 @@ class data_retriever():
 
     # Filter the required population data
     def get_population_data(self, df_required):
+
         LUT_dict = self.get_lookup_table()
         state_list = df_required['sub_region_1'].unique().tolist()
-        print (state_list)
+
+        # retrieve the population data based on the state provided
         base_path = ["https://www2.census.gov/programs-surveys/popest/tables/2010-2019/counties/totals/co-est2019-annres-{}.xlsx".format(LUT_dict[state]) for state in state_list]
 
         i = 0
         final_pop_df = pd.DataFrame()
+        # Iterate over the given paths for the states required
         for paths in base_path:
             pop_df = pd.read_excel(urllib.request.urlopen(paths), skiprows = 2, skipfooter=5)
             pop_df = pop_df[['Geographic Area', 'Unnamed: 12']].iloc[1:].reset_index()
             Area_list = pop_df['Geographic Area']
             area_list = [i.split(',')[0].replace('.', '') for i in Area_list]
             pop_df['Geographic Area'] = area_list
-
+            get_state_arr = lambda state_list, pop_df :[state_list[i]] * len(pop_df['Geographic Area'].tolist())
+            # Filter out the data required for the counties
             if (self.counties is not None):
                 pop_df = pop_df.where(pop_df['Geographic Area'].isin(df_required[df_required['sub_region_1']==state_list[i]]\
                     ['sub_region_2'].unique())==True).dropna(how='all').reset_index()
-                state_arr = [state_list[i]]*len(pop_df['Geographic Area'].tolist())
-                pop_df['State'] = state_arr
+
+                pop_df['State'] = get_state_arr(state_list, pop_df)
+
+            # Just get the population for the required state
             else:
                 pop_df = pop_df.where(pop_df['Geographic Area']==state_list[i]).dropna(how='all').reset_index()
-
-
+                pop_df['State'] = get_state_arr(state_list, pop_df)
             final_pop_df = final_pop_df.append(pop_df)
             i+=1
 
         return final_pop_df
 
+    # Retrieve the temporal active cases and deaths information for counties
     def get_cases_data(self, df_required):
 
-        state_cases_df = pd.read_csv(urllib.request.urlopen("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"))
-        state_cases_df = state_cases_df[state_cases_df['state'].isin(self.states) & (state_cases_df['date'].isin(df_required['date'].unique().tolist()))]
+        state_cases_update = lambda state_cases_df : state_cases_df[state_cases_df['state'].isin(self.states) & (state_cases_df['date'].isin(df_required['date'].unique().tolist()))]
+        # If require county level cases data
         if self.counties is not None:
+            state_cases_df = pd.read_csv(urllib.request.urlopen(
+                "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"))
+            state_cases_df = state_cases_update(state_cases_df)
+            # For all the counties in the state
             if 'all' in self.counties:
                 county_cases_df = state_cases_df.sort_values(by = ['county','date']).reset_index()
-            new_counties = [county.split(" ")[0] for county in self.counties]
-            county_cases_df = state_cases_df[state_cases_df['county'].isin(new_counties)].sort_values(by=['county','date'])
+            # For selected counties in the state
+            else:
+                new_counties = [county.split(" ")[0] for county in self.counties]
+                county_cases_df = state_cases_df[state_cases_df['county'].isin(new_counties)].sort_values(by=['county','date'])
 
+            county_cases_df=county_cases_df[['date', 'county', 'state', 'cases', 'deaths']]
+            return self.reorganize_case_data(df_required,county_cases_df)
+        # If require only state data
         else:
-            return state_cases_df.sort_values(by=['county','date']).reset_index()
-        county_cases_df=county_cases_df[['date', 'county', 'state', 'cases', 'deaths']]
-        return self.reorganize_case_data(df_required,county_cases_df)
+            state_cases_df = pd.read_csv(urllib.request.urlopen(
+                "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv"))
+            state_cases_df = state_cases_update(state_cases_df)
+            state_cases_df = state_cases_df[['date', 'state', 'cases', 'deaths']]
+            return state_cases_df.sort_values(by=['state','date']).reset_index()
 
 
+    # Reorganizing the data to match the mobility and population table
     def reorganize_case_data(self, df_required, df_county_cases):
 
         new_county_df = pd.DataFrame()
         new_temp_df = {}
         date_length =  len(df_required['date'].unique().tolist())
-        new_counties = [county.split(" ")[0] for county in self.counties]
+        if (self.counties is not None):
+            new_counties = [county.split(" ")[0] for county in self.counties]
+        elif 'all' in self.counties:
+            new_counties = list(df_county_cases['county'].unique())
+        else:
+            new_counties = self.states
 
         for county in new_counties:
-            temp_df = df_county_cases[df_county_cases['county']==county]
+            if self.counties is not None:
+                temp_df = df_county_cases[df_county_cases['county']==county]
+            else:
+                temp_df = df_county_cases[df_county_cases['state']==county]
             extend = lambda x,y: list(x[y].unique())*date_length
             case_list = list(temp_df['cases'].values)
             death_list = list(temp_df['deaths'].values)
@@ -142,7 +167,9 @@ class data_retriever():
                 death_list.insert(0,0)
             if (len(temp_df['cases'].tolist())< date_length):
                 new_temp_df['state'] = extend(temp_df,'state')
-                new_temp_df['county'] = extend(temp_df, 'county')
+                if (self.counties is not None):
+                    new_temp_df['county'] = extend(temp_df, 'county')
+
                 new_temp_df['date'] = list(df_required['date'].unique())
 
                 new_temp_df['cases'] = case_list
