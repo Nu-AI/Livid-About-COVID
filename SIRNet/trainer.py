@@ -34,9 +34,9 @@ class Trainer():
             output = loss.forward(fx, y)
         output.backward()
         optimizer.step()
-        for name, param in model.named_parameters():
-          if name == "SEIRNet.i2b.weight":
-             param.data.clamp_(1e-2)
+        #for name, param in model.named_parameters():
+        #  if name == "SEIRNet.i2b.weight":
+        #     param.data.clamp_(1e-2)
         return output.data.item()
 
     def train(self, model, X, Y, iters, step_size=4000):

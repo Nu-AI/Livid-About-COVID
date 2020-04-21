@@ -32,11 +32,9 @@ if not os.path.exists(RESULTS_DIR):
     os.mkdir(RESULTS_DIR)
 
 from SIRNet import util, trainer
-from SIRNet import Bexar_plotter as fpp
 
 ## ASSUMPTIONS: Let's put these properties right up front where they belong ###
 ###############################################################################
-
 reporting_rate = 0.60    # Portion of cases that are actually detected
 delay_days = 10          # Days between becoming infected / positive confirmation (due to incubation period / testing latency
 bed_pct = 0.40           # Portion of hospital beds that can be allocated for Covid-19 patients
@@ -46,7 +44,6 @@ start_model = 5          # The day where we begin our fit
 
 ############### Gathering Data #####################
 ####################################################
-
 if not os.path.exists('us-counties.csv'):
     urllib.request.urlretrieve(
         'https://raw.githubusercontent.com/nytimes/'
@@ -62,7 +59,6 @@ if not os.path.exists('us-counties.csv'):
 
 ###########   Get case data         ########################
 ############################################################
-
 county_name, state_name, population, beds = 'Bexar', 'Texas', 2003554, 7793
 
 # Load US County cases data
@@ -85,7 +81,6 @@ for i in range(len(cases.keys()) - delay_days):
     shift_cases[k] = cases[k10]
 cases = shift_cases
 # Our cases are driven by mobility data from 10 days before
-# Our first case date
 k = list(cases.keys())
 print ('Cases data goes from {} to {}'.format(k[0],k[-1])) # These are the dates we will use to look up mobility data
 
@@ -208,7 +203,7 @@ print('Initial mobility', data[0, :])
 
 # Initial conditions
 i0 = float(data[start_model-1, 6]) / population / reporting_rate
-e0 = 2.2*i0
+e0 = 2.2*i0/5.0
 data = data[start_model:] # sart on day 5
 
 # Split into input and output data
