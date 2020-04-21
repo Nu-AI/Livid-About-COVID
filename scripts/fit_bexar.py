@@ -259,7 +259,7 @@ Y = Y.reshape(Y.shape[0], 1, 1)  # time x batch x channels
 weights_name = WEIGHTS_DIR + '/{}_weights.pt'.format(county_name)
 trainer = trainer.Trainer(weights_name)
 model = trainer.build_model(e0,i0)
-trainer.train(model, X, Y, 10)
+trainer.train(model, X, Y, 1000)
 
 # Plot R vs. mobility
 W = np.squeeze(model.state_dict()['SEIRNet.i2b.weight'].numpy())
@@ -316,6 +316,7 @@ for case in cases:
 ###################################################
 gt = np.squeeze(Y.numpy()) * reporting_rate * population
 
+
 # plot styles
 cs = {}
 cs[25] = 'b-'
@@ -334,10 +335,13 @@ cl[100] = 'd'
 plt.rcParams.update({'font.size': 22})
 
 # Plot 1. Total Cases (Log)
+pidx = gt.shape[0] + 60  # write letter prediction at 60 days in the future
 plt.figure(dpi=100, figsize=(16,8))
 for case in total.keys():
   plt.plot(dates, total[case], cs[case], linewidth=4.0, label='{}. {}% Mobility'.format(cl[case], case))
+  plt.text(dates[pidx],total[case][pidx],cl[case])
 plt.plot(dates[:Y.shape[0]], gt, 'ks', label='SAHMD Data')
+
 plt.title('Total Case Count')
 plt.ylabel('Count')
 plt.yscale('log')
@@ -348,39 +352,23 @@ plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=30))
 plt.gcf().autofmt_xdate()
 plt.show()
 
-# Plot 2. Active Cases (zoomed out)
-plt.figure(dpi=100, figsize=(16,8))
-for case in total.keys():
-  plt.plot(dates, active[case], cs[case],linewidth=4.0, label='{}. {}% Mobility'.format(cl[case], case))
-plt.title('Active (Infectious) Case Count')
-plt.ylabel('Count')
-plt.grid(True)
-plt.legend()
-plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=30))
-plt.gcf().autofmt_xdate()
-plt.show()
+# Plots 2 & 3. Active Cases (zoomed out and zoomed in)
+for zoom in [True, False]:
+  plt.figure(dpi=100, figsize=(16,8))
+  for case in total.keys():
+    plt.plot(dates, active[case], cs[case],linewidth=4.0, label='{}. {}% Mobility'.format(cl[case], case))
+    pidx = np.argmax(active[case])  # write letter prediction at 60 days in the future
+    plt.text(dates[pidx],active[case][pidx],cl[case])
 
-# Plot 3. Active Cases (zoomed in)
-plt.figure(dpi=100, figsize=(16,8))
-for case in total.keys():
-  plt.plot(dates, active[case], cs[case], linewidth=4.0, label='{}. {}% Mobility'.format(cl[case], case))
-plt.title('Active (Infectious) Case Count')
-plt.ylabel('Count')
-plt.ylim((0, gt[-1]))
-plt.grid(True)
-plt.legend()
-plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=30))
-plt.gcf().autofmt_xdate()
-plt.show()
-
-
-
-
-
-
-
+  plt.title('Active (Infectious) Case Count')
+  plt.ylabel('Count')
+  plt.grid(True)
+  plt.legend()
+  if zoom: plt.ylim((0, gt[-1]))
+  plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+  plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=30))
+  plt.gcf().autofmt_xdate()
+  plt.show()
 
 
 
