@@ -3,7 +3,7 @@ import sys
 import math
 import numpy as np
 import torch
-from sirnet import SIRNet
+from sirnet import SEIRNet
 
 # Trainer class usage
 # trainer = Trainer(weights_path)
@@ -16,18 +16,12 @@ class Trainer():
         self.weights_path = weights_path
         return
 
-    def build_model(e0, i0, b_lstm=False, update_k=False):
-        # Cuda check
-        if not torch.cuda.is_available():
-            device = torch.device('cpu')  # use CPU
-        else:
-            device = torch.device('cuda')  # use GPU/CUDA
-
+    def build_model(self, e0, i0, b_lstm=False, update_k=False):
         # Sequential model
         model = torch.nn.Sequential()
-        model.add_module('SEIRNet', SIRNet.SEIRNet(e0=e0, i0=i0, b_lstm=b_lstm,
+        model.add_module('SEIRNet', SEIRNet(e0=e0, i0=i0, b_lstm=b_lstm,
                                                    update_k=update_k))
-        return model.to(device=device)
+        return model
 
     def iteration(self, model, loss, optimizer, x, y, log_loss=True):
         optimizer.zero_grad()
