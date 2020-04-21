@@ -47,8 +47,6 @@ start_model = 5          # The day where we begin our fit
 ############### Gathering Data #####################
 ####################################################
 
-# TODO: move these CSV downloads to the correct place (also check timestamp with
-#  what is available online?)
 if not os.path.exists('us-counties.csv'):
     urllib.request.urlretrieve(
         'https://raw.githubusercontent.com/nytimes/'
@@ -60,27 +58,6 @@ if not os.path.exists('us-counties.csv'):
         'covid-19-data/master/us-states.csv',
         'us-states.csv'
     )
-
-# Hospital beds/1k people
-# https://www.kff.org/other/state-indicator/beds-by-ownership/?activeTab=graph&currentTimeframe=0&startTimeframe=19&selectedRows=%7B%22states%22:%7B%22texas%22:%7B%7D%7D%7D&sortModel=%7B%22colId%22:%22Location%22,%22sort%22:%22asc%22%7D
-
-df = pd.read_excel(
-    'https://www2.census.gov/programs-surveys/popest/tables/2010-2019/'
-    'counties/totals/co-est2019-annres-48.xlsx',
-    skiprows=(0, 1, 2, 4))
-df.dropna(inplace=True)
-df.rename(columns={df.columns[0]: 'County'}, inplace=True)
-df.loc[:, 'County'] = df['County'].apply(
-    lambda name: name.replace('.', '')[:name.index(' County') - 1]
-)
-df.loc[:, 'State'] = 'Texas'
-counties = df[['County', 'State', 2019]].values.tolist()
-
-# bed_ratio = counties[0][3] / counties[0][2]
-bed_ratio = 7793 / 2003554  # Bexar beds / Bexar population
-for c in counties:
-    if len(c) == 3:
-        c.append(c[-1] * bed_ratio)
 
 
 ###########   Get case data         ########################
@@ -96,6 +73,9 @@ with open('us-counties.csv', 'r') as f:
         if row[1] == county_name and row[2] == state_name:
             cases[row[0]] = row[4]  # cases by date
 
+k = list(cases.keys())
+print ('Cases data goes from {} to {}'.format(k[0],k[-1]))
+
 # Shift case data assuming it lags actual by 10 days
 shift_cases = OrderedDict()
 day0 = list(cases.keys())[0]
@@ -106,6 +86,8 @@ for i in range(len(cases.keys()) - delay_days):
 cases = shift_cases
 # Our cases are driven by mobility data from 10 days before
 # Our first case date
+k = list(cases.keys())
+print ('Cases data goes from {} to {}'.format(k[0],k[-1])) # These are the dates we will use to look up mobility data
 
 # Load Activity Data
 state_path = os.path.join(DATA_DIR, 'Mobility data',
@@ -153,6 +135,9 @@ for i, date in enumerate(dates):
 
     mobility[date] = [k_by_date_or_fallback(k) for k in mkeys]
 
+k = list(mobility.keys())
+print ('Mobility data goes from {} to {}'.format(k[0],k[-1]))
+
 # Common Case Data + Activity Data Dates
 data = []
 common_dates = []
@@ -160,6 +145,8 @@ for k in cases.keys():
     if k not in mobility.keys():
         continue
     data.append(mobility[k] + [cases[k]])  # total cases
+    common_dates.append(k)
+day0 = common_dates[0]  # common day (will need to delay later)
 
 # Estimate hospitalization rate
 p = []
@@ -259,7 +246,7 @@ Y = Y.reshape(Y.shape[0], 1, 1)  # time x batch x channels
 weights_name = WEIGHTS_DIR + '/{}_weights.pt'.format(county_name)
 trainer = trainer.Trainer(weights_name)
 model = trainer.build_model(e0,i0)
-trainer.train(model, X, Y, 1000)
+trainer.train(model, X, Y, 10)
 
 # Plot R vs. mobility
 W = np.squeeze(model.state_dict()['SEIRNet.i2b.weight'].numpy())
@@ -268,7 +255,7 @@ p = np.squeeze(model.state_dict()['SEIRNet.p'].numpy())
 q = np.squeeze(model.state_dict()['SEIRNet.q'].numpy())
 ms = np.linspace(0, 1.2, 20)
 
-Re = [ q*np.sum(W*m)**p/k for m in ms]
+Re = [ np.sum(W*m)**p/k for m in ms]
 plt.plot(ms,Re)
 plt.xlabel('Average mobility')
 plt.ylabel('Reproduction number')
@@ -305,6 +292,7 @@ dates = [date0 + dt.timedelta(days=int(d + delay_days + start_model)) for d in d
 ############### Reporting #########################
 ###################################################
 print('\n#########################################\n\n')
+timestamp = dt.datetime.now().strftime('%Y_%m_%d')
 for case in cases:
     M = np.max(active[case])
     idx = np.argmax(active[case])
@@ -315,7 +303,6 @@ for case in cases:
 ############### Plotting ##########################
 ###################################################
 gt = np.squeeze(Y.numpy()) * reporting_rate * population
-
 
 # plot styles
 cs = {}
@@ -350,6 +337,7 @@ plt.legend()
 plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
 plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=30))
 plt.gcf().autofmt_xdate()
+plt.savefig('{}_Total_Cases.pdf'.format(timestamp))
 plt.show()
 
 # Plots 2 & 3. Active Cases (zoomed out and zoomed in)
@@ -357,7 +345,7 @@ for zoom in [True, False]:
   plt.figure(dpi=100, figsize=(16,8))
   for case in total.keys():
     plt.plot(dates, active[case], cs[case],linewidth=4.0, label='{}. {}% Mobility'.format(cl[case], case))
-    pidx = np.argmax(active[case])  # write letter prediction at 60 days in the future
+    pidx = gt.shape[0]+10 if zoom else np.argmax(active[case])  # write at 10 days or peak
     plt.text(dates[pidx],active[case][pidx],cl[case])
 
   plt.title('Active (Infectious) Case Count')
@@ -368,8 +356,7 @@ for zoom in [True, False]:
   plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
   plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=30))
   plt.gcf().autofmt_xdate()
+  plt.savefig('{}_Active_Cases{}.pdf'.format(timestamp, zoom))
   plt.show()
-
-
 
 
