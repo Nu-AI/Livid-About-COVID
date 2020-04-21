@@ -246,7 +246,7 @@ Y = Y.reshape(Y.shape[0], 1, 1)  # time x batch x channels
 weights_name = WEIGHTS_DIR + '/{}_weights.pt'.format(county_name)
 trainer = trainer.Trainer(weights_name)
 model = trainer.build_model(e0,i0)
-trainer.train(model, X, Y, 10)
+trainer.train(model, X, Y, 1000)
 
 # Plot R vs. mobility
 W = np.squeeze(model.state_dict()['SEIRNet.i2b.weight'].numpy())
