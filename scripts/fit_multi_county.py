@@ -634,6 +634,7 @@ for county_data in counties:
     print(key_list)
 
     # TODO: comment these (or make more efficient via pandas)
+    #  Use pandas category dtype probably
     p0_19 = 0
     p20_44 = 0
     p45_64 = 0
