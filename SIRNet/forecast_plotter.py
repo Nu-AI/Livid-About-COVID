@@ -27,7 +27,7 @@ sns.despine()
 
 # # scenario_list = ['Current Mobility', '20% Return to Normal',
 #                  '50% Return to Normal', 'Return to Normal Mobility']
-scenario_list = ['20% Mobility', 'Normal Mobility', '50% Mobility',
+scenario_list = ['25% Mobility', 'Normal Mobility', '50% Mobility',
                  '75% Mobility']
 
 
@@ -165,6 +165,7 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None,
         plt.xticks(range(0, max_days, int(max_days / len(xticklabel))),
                    xticklabel, rotation=xtick_rotation,
                    **tick_font)
+        plt.grid()
         if log_scale:
             plt.yscale('log')
         # plt.yticks(np.arange(0, 1000000, 200000), [0, 200, 400, 600, 800],
@@ -182,6 +183,7 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None,
         # plt.tight_layout(pad=0.5)
         # plt.savefig("Bexar_total.pdf")
         plt.ylim((0, 2 * gt_arr[-1]))
+        plt.grid()
         if show:
             plt.show()
     else:
@@ -190,7 +192,7 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None,
 
         while count_y < 2:
             ax1 = ax[count_y]
-            ax1.grid(False)
+            ax1.grid(True)
             print(count_y)
             for i in range(len(data_list)):
                 day_arr = day_list[i]

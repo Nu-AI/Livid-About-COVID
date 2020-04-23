@@ -47,7 +47,7 @@ def get_scenario_dict(scenario_list, county_name):
 # Total Cases (latent)
 # Active Cases (latent)
 
-population = 2.004e6
+#population = 2.004e6
 
 
 def get_arrays(dict, scenario_list, population):
@@ -98,14 +98,14 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None):
     plt.rcParams['axes.linewidth'] = 1
 
     # fig, ax = plt.subplots()
-    plt.rcParams.update({'font.size': 14, 'legend.labelspacing': 1.3})
+    plt.rcParams.update({'font.size': 16, 'legend.labelspacing': 1.3})
     count_x = 0
     count_y = 0
     max = 0
     x = 0
     sns.set()
     sns.set_style('whitegrid')
-    plt.grid(False)
+    plt.grid(True)
     sns.despine()
     palette = sns.color_palette("mako_r", 6)
     count = 0
@@ -132,90 +132,91 @@ def plot_data(data_list, day_list, legend_list, gridplot, gt_arr=None):
     max_days = (end - start).days
     xticklabel = labels(start, end)
 
-    legend_size = 7
+    legend_size = 21
 
     # Change the title, axis, label and tick font settings here
-    title_font = {'fontname': 'Arial', 'size': '16', 'color': 'black',
+    title_font = {'fontname': 'Arial', 'size': '24', 'color': 'black',
                   'weight': 'bold',
                   'verticalalignment': 'bottom'}  # Bottom vertical alignment for more space
-    axis_font = {'fontname': 'Arial', 'size': '14', 'weight': 'bold'}
-    sp_label_font = {'fontname': 'Arial', 'size': '15', 'weight': 'bold'}
-    tick_font = {'fontname': 'Arial', 'size': '12', 'weight': 'bold'}
-    label_font = {'fontname': 'Arial', 'size': '13', 'weight': 'bold'}
+    axis_font = {'fontname': 'Arial', 'size': '20', 'weight': 'bold'}
+    sp_label_font = {'fontname': 'Arial', 'size': '16', 'weight': 'bold'}
+    tick_font = {'fontname': 'Arial', 'size': '16', 'weight': 'bold'}
+    label_font = {'fontname': 'Arial', 'size': '16', 'weight': 'bold'}
 
-    log_scale = 0
+    for log_scale in [0, 1]:
 
-    if gridplot != 1:
-        for i in range(len(data_list)):
-            day_arr = day_list[i]
-            data_arr = data_list[i]
-            label_string1 = map_list[i] + "1. {} (Active)".format(
-                legend_list[i])
-            
-            plt.plot(day_arr[0:max_days], data_arr[0][0:max_days],
-                     label=label_string1, linestyle="--",
-                     color=color_list[i], linewidth=linewidth)
-            
-       # if gt_arr is not None:
-        #    plt.plot(day_arr[:len(gt_arr)], gt_arr, 'o', label='Ground Truth')
+      if gridplot != 1:
+          for i in range(len(data_list)):
+              day_arr = day_list[i]
+              data_arr = data_list[i]
+              label_string1 = map_list[i] + "1. {} (Active)".format(
+                  legend_list[i])
+              
+              plt.plot(day_arr[0:max_days], data_arr[0][0:max_days],
+                       label=label_string1, linestyle="--",
+                       color=color_list[i], linewidth=linewidth)
+              
+         # if gt_arr is not None:
+          #    plt.plot(day_arr[:len(gt_arr)], gt_arr, 'o', label='Ground Truth')
 
-        plt.xlabel(xlabel, **sp_label_font, labelpad=x_labelpad)
-        plt.ylabel(ylabel, **sp_label_font, labelpad=y_labelpad)
+          plt.xlabel(xlabel, **sp_label_font, labelpad=x_labelpad)
+          plt.ylabel(ylabel, **sp_label_font, labelpad=y_labelpad)
 
-        plt.xticks(range(0, max_days, int(max_days / len(xticklabel))),
-                   xticklabel, rotation=xtick_rotation,
-                   **tick_font)
-        if log_scale:
-            plt.yscale('log')
-        # plt.yticks(np.arange(0, 1000000, 200000), [0, 200, 400, 600, 800],
-        #           **tick_font)
-        plt.legend(prop={'size': legend_size, 'weight': 'bold'})
-        plt.margins(0)
-        manager = plt.get_current_fig_manager()
-        plot_backend = mpl.get_backend()
-        if plot_backend == 'TkAgg':
-            manager.resize(*manager.window.maxsize())
-        elif plot_backend == 'wxAgg':
-            manager.frame.Maximize(True)
-        elif plot_backend == 'Qt4Agg':
-            manager.window.showMaximized()
-        # plt.tight_layout(pad=0.5)
-        plt.savefig("US_10d_ActiveF.pdf")
-        plt.ylim((0, 2*gt_arr[-1]))
-        plt.show()
-            
-        for i2 in range(len(data_list)):
-            day_arr = day_list[i2]
-            data_arr = data_list[i2]
-            label_string2 = map_list[i2] + "1. {} (Total)".format(legend_list[i2])
-            plt.plot(day_arr[0:max_days], data_arr[1][0:max_days],
-                     label=label_string2,
-                     color=color_list[i2], linewidth=linewidth)
+          plt.xticks(range(0, max_days, int(max_days / len(xticklabel))),
+                     xticklabel, rotation=xtick_rotation,
+                     **tick_font)
+          plt.yticks(fontsize=16)
+          if log_scale:
+              plt.yscale('log')
+          # plt.yticks(np.arange(0, 1000000, 200000), [0, 200, 400, 600, 800],
+          #           **tick_font)
+          plt.legend(prop={'size': legend_size, 'weight': 'bold'})
+          plt.margins(0)
+          manager = plt.get_current_fig_manager()
+          plot_backend = mpl.get_backend()
+          if plot_backend == 'TkAgg':
+              manager.resize(*manager.window.maxsize())
+          elif plot_backend == 'wxAgg':
+              manager.frame.Maximize(True)
+          elif plot_backend == 'Qt4Agg':
+              manager.window.showMaximized()
+          # plt.tight_layout(pad=0.5)
+          plt.savefig("US_10d_ActiveF.pdf")
+          plt.ylim((0, 2*gt_arr[-1]))
+          plt.show()
+              
+          for i2 in range(len(data_list)):
+              day_arr = day_list[i2]
+              data_arr = data_list[i2]
+              label_string2 = map_list[i2] + "1. {} (Total)".format(legend_list[i2])
+              plt.plot(day_arr[0:max_days], data_arr[1][0:max_days],
+                       label=label_string2,
+                       color=color_list[i2], linewidth=linewidth)
 
-        if gt_arr is not None:
-            plt.plot(day_arr[:len(gt_arr)], gt_arr, 'o', label='SAHMD Data')
+          if gt_arr is not None:
+              plt.plot(day_arr[:len(gt_arr)], gt_arr, 'o', label='SAHMD Data')
 
-        plt.xlabel(xlabel, **sp_label_font, labelpad=x_labelpad)
-        plt.ylabel(ylabel, **sp_label_font, labelpad=y_labelpad)
+          plt.xlabel(xlabel, **sp_label_font, labelpad=x_labelpad)
+          plt.ylabel(ylabel, **sp_label_font, labelpad=y_labelpad)
 
-        plt.xticks(range(0, max_days, int(max_days / len(xticklabel))),
-                   xticklabel, rotation=xtick_rotation,
-                   **tick_font)
-        if log_scale:
-            plt.yscale('log')
-        # plt.yticks(np.arange(0, 1000000, 200000), [0, 200, 400, 600, 800],
-        #           **tick_font)
-        plt.legend(prop={'size': legend_size, 'weight': 'bold'})
-        plt.margins(0)
-        manager = plt.get_current_fig_manager()
-        plot_backend = mpl.get_backend()
-        if plot_backend == 'TkAgg':
-            manager.resize(*manager.window.maxsize())
-        elif plot_backend == 'wxAgg':
-            manager.frame.Maximize(True)
-        elif plot_backend == 'Qt4Agg':
-            manager.window.showMaximized()
-        # plt.tight_layout(pad=0.5)
-        plt.savefig("US_10d_TotalF.pdf")
-        plt.ylim((0, 2*gt_arr[-1]))
-        plt.show()
+          plt.xticks(range(0, max_days, int(max_days / len(xticklabel))),
+                     xticklabel, rotation=xtick_rotation,
+                     **tick_font)
+          if log_scale:
+              plt.yscale('log')
+          # plt.yticks(np.arange(0, 1000000, 200000), [0, 200, 400, 600, 800],
+          #           **tick_font)
+          plt.legend(prop={'size': legend_size, 'weight': 'bold'})
+          plt.margins(0)
+          manager = plt.get_current_fig_manager()
+          plot_backend = mpl.get_backend()
+          if plot_backend == 'TkAgg':
+              manager.resize(*manager.window.maxsize())
+          elif plot_backend == 'wxAgg':
+              manager.frame.Maximize(True)
+          elif plot_backend == 'Qt4Agg':
+              manager.window.showMaximized()
+          # plt.tight_layout(pad=0.5)
+          plt.savefig("US_10d_TotalF.pdf")
+          plt.ylim((0, 2*gt_arr[-1]))
+          plt.show()

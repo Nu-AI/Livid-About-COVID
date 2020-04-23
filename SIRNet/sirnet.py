@@ -107,8 +107,6 @@ class SEIRNet(torch.nn.Module):
             [[7.3690e-02, 1.0000e-04, 1.0000e-04, 6.5169e-02, 1.4331e-01,
               2.9631e-03]], dtype=torch.float32
         )
-        # k_init = torch.tensor([[.11]], dtype=torch.float32)
-        # s_init = torch.tensor([[.20]], dtype=torch.float32)
 
         # gamma - 5 day (3-7 day) average duration of infection: Woelfel et al
         self.k = Parameter(torch.tensor([[.20]], dtype=torch.float32),
@@ -130,9 +128,6 @@ class SEIRNet(torch.nn.Module):
                             requires_grad=False)
 
         # self.p.requires_grad = False
-
-        # if not update_k:  # TODO: disable for now as k is a float...
-        #     self.k.requires_grad = False
 
         if b_lstm:
             print('\nb: Using LSTM\n')
@@ -185,12 +180,10 @@ class SEIRNet(torch.nn.Module):
                 #  out definition of residential mobility...
                 xm = X[t].clone()
                 xm[0, 5] = 0
-                # b = torch.clamp(torch.exp(self.i2b(xm**2)), 0) # predicting the log of the contact rate as a linear combination of mobility squared
+                # b = torch.clamp(torch.exp(-self.i2b(xm)), 0) # predicting the log of the contact rate as a linear combination of mobility squared
                 # b = 2.2 # should be the value of b under normal mobility.  Kucharski et al
                 # b = 5.0 * .2 * torch.sigmoid(self.i2b(X[t])) # would max out b at 2.2- maybe not a good idea
-                # b = 2.2 - 2.2 * torch.tanh(self.i2b(X[t]))  # nope
-                # b = 2.2 - 2.2 * torch.tanh(self.i2b(X[t]) ** self.p)  # nope
-                # b = self.q * torch.norm(X[t, 0, :5]) ** self.p
+                # b = self.q * torch.norm(X[t, 0, :5]) ** self.p  # Just look at norm of mobility- this is actually very good / maybe more reliable.
                 # b = torch.clamp(self.i2b(xm), 0) ** self.p  # best so far
                 b = torch.relu(self.i2b(xm)) ** self.p  # same as above line
 

@@ -36,7 +36,7 @@ if not os.path.exists(RESULTS_DIR):
 
 import SIRNet
 from SIRNet import util
-from SIRNet import forecast_plotter as fp
+from SIRNet import Bexar_plotter as fp
 
 ## ASSUMPTIONS: Let's put these properties right up front where they belong ###
 ###############################################################################
@@ -44,7 +44,7 @@ from SIRNet import forecast_plotter as fp
 # reporting_rate = 0.20  # Portion of cases that are actually detected
 reporting_rate = 0.60    # Portion of cases that are actually detected
 # delay_days = 4         # Days between becoming infected / positive confirmation (due to incubation period / testing latency
-delay_days = 10          # Days between becoming infected / positive confirmation (due to incubation period / testing latency
+delay_days = 7          # Days between becoming infected / positive confirmation (due to incubation period / testing latency
 bed_pct = 0.40           # Portion of hospital beds that can be allocated for Covid-19 patients
 hosp_rate = 0.20         # Portion of cases that result in hospitalization
 # @formatter:on
@@ -136,14 +136,14 @@ else:
 
     # # Determine the 5 biggest county case rates in these 5 states:
     # # NY, NJ, CA, MI, PA, TX
-    # counties = [
-    #     # county, state, population, hospital beds
-    #     # ['King', 'Washington', 2.25e6, 8000],
-    #     # ['Harris','Texas', 4.7e6, 12000],
-    #     # ['New York City', 'New York', 8.0e6, 32000],
-    #     # ['Bexar', 'Texas', 1.99e6, 7793],
-    #     ['Bexar', 'Texas', 2.00e6, 7793],
-    # ]
+    #counties = [
+         # county, state, population, hospital beds
+         # ['King', 'Washington', 2.25e6, 8000],
+         # ['Harris','Texas', 4.7e6, 12000],
+         # ['New York City', 'New York', 8.0e6, 32000],
+         # ['Bexar', 'Texas', 1.99e6, 7793],
+         # ['Bexar', 'Texas', 2.00e6, 7793],
+     #]
 
 # Instead of showing all plots, save them to disk instead
 SAVE_PLOTS = True
@@ -189,9 +189,9 @@ def main(Xs, Ys, names=None):
             output = loss.forward(fx, y)
         output.backward()
         optimizer.step()
-        # for name, param in model.named_parameters():
-        #    if name == "SEIRNet.i2b.weight":
-        #      param.data.clamp_(1e-4)
+        for name, param in model.named_parameters():
+          if name == "SEIRNet.i2b.weight":
+             param.data.clamp_(1e-2)
         return output.data.item()
 
     ##################### Build and Train Model #################
@@ -217,8 +217,8 @@ def main(Xs, Ys, names=None):
         iters = 1000
     else:
         model.load_state_dict(torch.load(weights_name))
-        iters = 1000
-        # iters = 0
+        #iters = 1000
+        iters = 0
 
     # print([np.isnan(util.to_numpy(x)).any() for x in Xs])
     # TODO: COMAL COUNTY, TX, GIVES AN ERROR WITH POWER FUNCTION WHY
@@ -243,6 +243,20 @@ def main(Xs, Ys, names=None):
         # TODO: scheduler may restart learning rate if trying to load from file
         #  Mitigation: store epoch number in filename
         scheduler.step()
+
+    # Plot R vs. mobility
+    W = np.squeeze(model.state_dict()['SEIRNet.i2b.weight'].numpy())
+    k = np.squeeze(model.state_dict()['SEIRNet.k'].numpy())
+    p = np.squeeze(model.state_dict()['SEIRNet.p'].numpy())
+    ms = np.linspace(0, 1.2, 20)
+  
+    Re = [ np.sum(W*m)**p/k for m in ms]
+    plt.plot(ms,Re)
+    plt.xlabel('Average mobility')
+    plt.ylabel('Reproduction number')
+    plt.title('R0 vs. Mobility')
+    plt.grid()
+    plt.show()
 
     if TRAIN_MULTIPLE:
         def mean_squared_error_samplewise(y_pred, y_true, agg_func=np.mean):
@@ -491,7 +505,7 @@ def main(Xs, Ys, names=None):
     # Save the data
     # cases = ['Current Mobility', 'Return to Normal Mobility',
     #          '50% Return to Normal', '20% Return to Normal']
-    cases = ['20% Mobility', 'Normal Mobility', '50% Mobility', '75% Mobility']
+    cases = ['25% Mobility', 'Normal Mobility', '50% Mobility', '75% Mobility']
     for i, s in enumerate([sir_state1, sir_state2, sir_state3, sir_state4]):
         data = {
             'Days': np.array(days), 'Active Cases (latent)': s[:, 0],
@@ -527,7 +541,7 @@ def main(Xs, Ys, names=None):
     # fp.plot_data(data_list, day_list, legend_list, 0,
     #              Y * fp.population * reporting_rate, show=not SAVE_PLOTS)
     fp.plot_data(data_list, day_list, legend_list, 0,
-                 Y * population * reporting_rate, show=not SAVE_PLOTS)
+                 Y * population * reporting_rate) #, show=not SAVE_PLOTS)
     if SAVE_PLOTS:
         plt.savefig(county_name + '_forecast_plotted.pdf')
         plt.close()
@@ -538,6 +552,8 @@ def main(Xs, Ys, names=None):
 Xs, Ys, names = [], [], []
 for county_data in counties:
     county_name, state_name, population, beds = county_data
+
+    if county_name != 'Bexar': continue
 
     ############### Loading data #########################
     ######################################################
@@ -749,13 +765,16 @@ for county_data in counties:
     Y = Y / population
     # multiply by suspected under-reporting rate
     Y = Y / reporting_rate
+    print ('population, reporting rate', population, reporting_rate)
 
     if METHOD_e0i0 == 2:
-        # i0 and e0 (assume incubation of `delay_days`)
-        e0 = Y[0]
+        # i0 and e0 | current 
+        i0 = Y[0]
+        e0 = 2.2*Y[0]
         # e0 minus the gradient between of Y (point at 0 and point at
         # delay_days) times delay_days = 2 * e0 - Y[delay_days], clip at 0
-        i0 = max(2 * e0 - Y[delay_days], 0)
+        #e0 = Y[0]
+        #i0 = max(2 * e0 - Y[delay_days], 0)
         print('e0={} | i0={}'.format(e0, i0))
     else:
         raise NotImplementedError('no METHOD_e0i0 for "{}"'.format(METHOD_e0i0))
