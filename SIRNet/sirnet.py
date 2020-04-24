@@ -166,12 +166,13 @@ class SEIRNet(SIRNetBase):
     N_COMPARTMENTS = 4
     N_OUTPUTS = 1
 
-    def __init__(self, *args, hidden_size=4, e0=5.6e-6, **kwargs):
+    def __init__(self, *args, hidden_size=4, e0=5.6e-6, update_s=False,
+                 **kwargs):
         super(SEIRNet, self).__init__(*args, hidden_size=hidden_size, **kwargs)
 
         # sigma - 5 day incubation period [Backer et al]
         self.s = Parameter(torch.tensor([[.20]], dtype=torch.float32),
-                           requires_grad=False)
+                           requires_grad=update_s)
         self.p = Parameter(torch.tensor([[2.5]], dtype=torch.float32),
                            requires_grad=True)
         self.q = Parameter(torch.tensor([[0.2]], dtype=torch.float32),
