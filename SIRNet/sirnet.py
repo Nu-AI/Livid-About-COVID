@@ -1,210 +1,208 @@
-import numpy as np
+from abc import ABC, abstractmethod
+
 import torch
 from torch.nn.parameter import Parameter
 
 
-# TODO: create abstract base class for these two modules, lot of repeat code
-#  here...
-###################### Defining Model #######################
-#############################################################
-class SIRNet(torch.nn.Module):
-    def __init__(self, input_size=6, i0=5.6e-6, update_k=True, hidden_size=3,
-                 output_size=1, b_lstm=False):
-        super(SIRNet, self).__init__()
+class SIRNetBase(ABC, torch.nn.Module):
+    # Subclasses must set this. For SIR, the 3 compartments would be S, I, R...
+    N_MOBILITY = 6
+    N_COMPARTMENTS = 3
+    N_OUTPUTS = 1
 
-        assert input_size == 6, 'Input dimension must be 6'  # for now
-        assert hidden_size == 3, 'Hidden dimension must be 3'  # for now
-        assert output_size == 1, 'Output dimension must be 1'  # for now
+    def __init__(self, input_size=6, hidden_size=3, output_size=1, i0=5.6e-6,
+                 k=0.2, b_model='linear', update_k=False, b_kwargs=None):
+        # TODO(document): b_kwargs are passed to _make_b_model and are not
+        #  standard **kwargs as those may be used for other attributes or
+        #  sub-models
+        super(SIRNetBase, self).__init__()
+
+        # Number of mobility points
+        # TODO: this should be able to be reduced at least
+        # TODO: rename for when other inputs are used
+        assert input_size == self.N_MOBILITY, \
+            'Input dimension must be %d' % self.N_MOBILITY
+        # Number of compartments of the SIR-like model
+        assert hidden_size == self.N_COMPARTMENTS, \
+            'Hidden dimension must be %d' % self.N_COMPARTMENTS
+        # Number of cases or other outputs
+        assert output_size == self.N_OUTPUTS, \
+            'Output dimension must be %d' % self.N_OUTPUTS
 
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
-        self.b_lstm = b_lstm
 
-        # Initializations (from prior training)
-        b_init = torch.tensor(
-            [[7.3690e-02, 1.0000e-04, 1.0000e-04, 6.5169e-02, 1.4331e-01,
-              2.9631e-03]], dtype=torch.float32
-        )
-        k_init = torch.tensor([[.09]], dtype=torch.float32)
+        # gamma=.2 : 5 day (3-7 day) average duration of infection [Woelfel
+        # et al]
+        self.k = Parameter(torch.tensor([[k]], dtype=torch.float32),
+                           requires_grad=update_k)
+        # b
+        self.b_model = b_model.lower()
+        self._make_b_model(**(b_kwargs or {}))
+        # i0 - infected init @ time 0 (no gradient)
+        self.i0 = Parameter(torch.tensor(i0, dtype=torch.float32),
+                            requires_grad=False)
 
-        self.k = Parameter(k_init, requires_grad=update_k)
-        self.i0 = i0
-
-        if b_lstm:
-            self.i2b = torch.nn.LSTM(input_size, 1, bias=False)
-        else:
-            self.i2b = torch.nn.Linear(input_size, 1, bias=False)
+    def _make_b_model(self, lstm_hidden_size=None, lstm_bias=False):
+        if self.b_model == 'linear':
+            """Linear layer transforms input to b parameter of SIR-like models
+            """
+            # Initialization from prior training
+            b_init = torch.tensor(
+                [[7.3690e-02, 1.0000e-04, 1.0000e-04, 6.5169e-02, 1.4331e-01,
+                  2.9631e-03]], dtype=torch.float32
+            )
+            self.i2b = torch.nn.Linear(self.input_size, 1, bias=False)
             self.i2b.weight.data = b_init
+        elif self.b_model == 'lstm':
+            """LSTM layer transforms input to b parameter of SIR-like models
+            """
+            if lstm_hidden_size is None:
+                lstm_hidden_size = self.N_MOBILITY
+            self.i2l = torch.nn.LSTM(self.input_size, lstm_hidden_size,
+                                     bias=lstm_bias)
+            self.l2b = torch.nn.Linear(lstm_hidden_size, 1)
+        else:
+            raise ValueError('b_model must be either "linear" or "lstm" but '
+                             'received: {}'.format(self.b_model))
 
-        # Output layer sums I and R (total cases)
-        self.h2o = torch.nn.Linear(hidden_size, output_size, bias=False)
-        self.h2o.weight.data = torch.from_numpy(
-            np.array([1, 1, 0]).astype(np.float32).reshape((1, hidden_size)))
-        for p in self.h2o.parameters():
-            p.requires_grad = False
+    @abstractmethod
+    def _forward_init(self, hidden):
+        """Subclasses must implement this to properly initialize hidden and call
+        this via super() to initialize the b_model properly"""
+        if self.b_model == 'lstm':
+            # LSTM states
+            self.h_t = torch.zeros(1, 1, self.i2b.hidden_size)
+            self.c_t = torch.zeros(1, 1, self.i2b.hidden_size)
+
+    @abstractmethod
+    def _forward_update_state(self, hidden, prev_h, b, *args, **kwargs):
+        """Update the SIR-like state of the model. Subclasses must implement
+        this. Subclasses should return an updated version of `hidden`"""
+        raise NotImplementedError
+
+    def _forward_output(self, hidden):
+        """It may be a good idea to update this in subclasses, and necessarily
+        must do so is the order of the SIR-like compartments does NOT begin with
+        I, R"""
+        return hidden[:, 0] + hidden[:, 1]
+
+    def _forward_cleanup(self):
+        if self.b_model == 'lstm':
+            # Remove LSTM state storage
+            del self.h_t
+            del self.c_t
 
     def forward(self, X):
         time_steps = X.size(0)  # time first
         batch_size = X.size(1)  # batch second
         hidden = torch.zeros(
             batch_size, self.hidden_size
-        ).to(device=X.device)  # hidden state is i,r,s
-        hidden[:, 0] = self.i0  # forward should probably take this as an input
-        hidden[:, 2] = 1.0 - self.i0
-        p = hidden.clone()  # init previous state
-        outputs = []
+        ).to(device=X.device)  # hidden state is i,r,s,...
+        # Initialize for the forward pass
+        self._forward_init(hidden)
+        # TODO: include init hidden in output hiddens?
+        prev_h = hidden.clone()  # init previous state
         hiddens = []
-        if self.b_lstm:
-            # LSTM states
-            h_t = torch.zeros(1, 1, 1)
-            c_t = torch.zeros(1, 1, 1)
+        outputs = []
         for t in range(time_steps):
             # contact rate as a function of our input vector
-            if self.b_lstm:
-                b, (h_t, c_t) = self.i2b(X[None, t], (h_t, c_t))
-                b = b.squeeze()
+            if self.b_model == 'lstm':
+                b_inter, (self.h_t, self.c_t) = self.i2l(
+                    X[None, t], (self.h_t, self.c_t)).squeeze(dim=1)
+                # TODO No negative contact rates...pytorch does not have LSTM
+                #  option to change tanh to relu this is dumb and needs fixing
+                #  here for valid b that also trains well...need custom LSTM
+                #  implementation in Python to change activation function
+                b = torch.relu(self.l2b(b_inter)).squeeze()
+            elif self.b_model == 'linear':
+                # 2.2 should be the value of b under normal mobility [Kucharski
+                # et al]
+                # Remove residential mobility
+                # TODO: Not right spot for this. Disambiguate residential
+                #  mobility...
+                xm = X[t].clone()
+                xm[0, 5] = 0
+                # log of the contact rate as a linear combination of mobility
+                # squared
+                # b = torch.clamp(torch.exp(-self.i2b(xm)), 0)
+                # Just look at norm of mobility- this is actually very good/
+                # maybe more reliable.
+                # b = self.q * torch.norm(X[t, 0, :5]) ** self.p
+                # Best so far
+                b = torch.relu(self.i2b(xm)) ** self.p
             else:
-                b = torch.clamp(self.i2b(X[t]),
-                                0)  # contact rate cannot go negative
-
-            # update the hidden state SIR model
-            drdt = self.k * p[:, 0]
-            hidden[:, 0] = p[:, 0] + p[:, 0] * b * p[:, 2] - drdt  # infected
-            hidden[:, 1] = p[:, 1] + drdt  # recovered
-            hidden[:, 2] = 1.0 - p[:, 0] - p[:, 1]  # susceptible
-
-            # update the output
-            p = hidden.clone()
-            output = self.h2o(p)
+                raise RuntimeError('b_model is invalid, this should not have '
+                                   'happened')
+            # update the hidden state of SIR-like model
+            hidden = self._forward_update_state(hidden, prev_h, b)
+            # update the outputs
+            prev_h = hidden.clone()
+            output = self._forward_output(hidden)
             outputs.append(output)
-            hiddens.append(p)
+            hiddens.append(prev_h)
+        # End of loop cleanup
+        self._forward_cleanup()
 
         return torch.stack(hiddens), torch.stack(outputs)
 
 
-###################### Defining Model #######################
-#############################################################
-class SEIRNet(torch.nn.Module):
-    def __init__(self, input_size=6, e0=5.6e-6, i0=5.2e-6, update_k=True,
-                 hidden_size=4, output_size=1, b_lstm=False,
-                 lstm_hidden_size=6):
-        super(SEIRNet, self).__init__()
+class SIRNet(SIRNetBase):
+    N_COMPARTMENTS = 3
+    N_OUTPUTS = 1
 
-        assert input_size == 6, 'Input dimension must be 6'  # for now
-        assert hidden_size == 4, 'Hidden dimension must be 4'  # for now
-        assert output_size == 1, 'Output dimension must be 1'  # for now
+    def _forward_init(self, hidden):
+        hidden[:, 0] = self.i0
+        hidden[:, 2] = 1.0 - self.i0
+        super()._forward_init(hidden)
 
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        self.output_size = output_size
+    def _forward_update_state(self, hidden, prev_h, b):
+        # update the hidden state SIR model @formatter:off
+        drdt = self.k * prev_h[:, 0]
+        hidden[:, 0] = prev_h[:, 0] + prev_h[:, 0] * b * prev_h[:, 2] - drdt  # infected
+        hidden[:, 1] = prev_h[:, 1] + drdt                                    # recovered
+        hidden[:, 2] = 1.0 - prev_h[:, 0] - prev_h[:, 1]                      # susceptible
+        # @formatter:on
+        return hidden
 
-        self.b_lstm = b_lstm
-        self.lstm_hidden_size = lstm_hidden_size  # only applicable if b_lstm
 
-        # Initializations (from prior training)
-        b_init = torch.tensor(
-            [[7.3690e-02, 1.0000e-04, 1.0000e-04, 6.5169e-02, 1.4331e-01,
-              2.9631e-03]], dtype=torch.float32
-        )
+class SEIRNet(SIRNetBase):
+    N_COMPARTMENTS = 4
+    N_OUTPUTS = 1
 
-        # gamma - 5 day (3-7 day) average duration of infection: Woelfel et al
-        self.k = Parameter(torch.tensor([[.20]], dtype=torch.float32),
-                           requires_grad=False)
-        # sigma - 5 day incubation period (	Backer et al )
+    def __init__(self, *args, hidden_size=4, e0=5.6e-6, **kwargs):
+        super(SEIRNet, self).__init__(*args, hidden_size=hidden_size, **kwargs)
+
+        # sigma - 5 day incubation period [Backer et al]
         self.s = Parameter(torch.tensor([[.20]], dtype=torch.float32),
                            requires_grad=False)
-
         self.p = Parameter(torch.tensor([[2.5]], dtype=torch.float32),
                            requires_grad=True)
         self.q = Parameter(torch.tensor([[0.2]], dtype=torch.float32),
                            requires_grad=True)
-
         # Exposed init @ time 0 (no gradient)
         self.e0 = Parameter(torch.tensor(e0, dtype=torch.float32),
                             requires_grad=False)
-        # Infected init @ time 0 (no gradient)
-        self.i0 = Parameter(torch.tensor(i0, dtype=torch.float32),
-                            requires_grad=False)
 
-        # self.p.requires_grad = False
-
-        if b_lstm:
-            print('\nb: Using LSTM\n')
-            self.i2l = torch.nn.LSTM(input_size, lstm_hidden_size)
-            self.l2b = torch.nn.Linear(lstm_hidden_size, 1)
-        else:
-            self.i2b = torch.nn.Linear(input_size, 1, bias=False)
-            self.i2b.weight.data = b_init
-
-        # Output layer sums I and R (total cases)
-        self.h2o = torch.nn.Linear(hidden_size, output_size, bias=False)
-        self.h2o.weight.data = torch.from_numpy(
-            np.array([1, 1, 0, 0]).astype(np.float32).reshape((1, hidden_size)))
-        for p in self.h2o.parameters():
-            p.requires_grad = False
-
-    def forward(self, X):
-        time_steps = X.size(0)  # time first
-        batch_size = X.size(1)  # batch second
-
-        hidden = torch.zeros(
-            batch_size, self.hidden_size
-        ).to(device=X.device)  # hidden state is i,r,s,e
+    def _forward_init(self, hidden):
         hidden[:, 0] = self.i0  # initial infected
+        hidden[:, 2] = 1.0 - self.i0 - self.e0  # susceptible
         hidden[:, 3] = self.e0  # initial exposed
-        hidden[:, 2] = 1.0 - self.i0 - self.e0  # susceptible0
-        # hidden[:, 1] = 0.0      # recovered
+        super()._forward_init(hidden)
 
-        p = hidden.clone()  # init previous state
-        outputs = []
-        hiddens = []
-        if self.b_lstm:
-            # LSTM states
-            h_t = torch.zeros(1, 1, self.lstm_hidden_size)
-            c_t = torch.zeros(1, 1, self.lstm_hidden_size)
-        for t in range(time_steps):
-            # contact rate as a function of our input vector
-            if self.b_lstm:
-                b_inter, (h_t, c_t) = self.i2l(X[None, t], (h_t, c_t))
-                # TODO No negative contact rates...
-                # TODO: pytorch does not have LSTM option to change tanh to relu
-                #  this is dumb and needs fixing here for valid b...
-                b = self.l2b(b_inter.squeeze(dim=1))
-                # b = torch.clamp(self.l2b(b_inter.squeeze(dim=1)), 0)
-                b = torch.relu(self.l2b(b_inter.squeeze(dim=1)))
-                b = b.squeeze()
-            else:
-                # Remove residential mobility
-                # TODO: Not right spot for this. Also, should we do this? Figure
-                #  out definition of residential mobility...
-                xm = X[t].clone()
-                xm[0, 5] = 0
-                # b = torch.clamp(torch.exp(-self.i2b(xm)), 0) # predicting the log of the contact rate as a linear combination of mobility squared
-                # b = 2.2 # should be the value of b under normal mobility.  Kucharski et al
-                # b = 5.0 * .2 * torch.sigmoid(self.i2b(X[t])) # would max out b at 2.2- maybe not a good idea
-                # b = self.q * torch.norm(X[t, 0, :5]) ** self.p  # Just look at norm of mobility- this is actually very good / maybe more reliable.
-                # b = torch.clamp(self.i2b(xm), 0) ** self.p  # best so far
-                b = torch.relu(self.i2b(xm)) ** self.p  # same as above line
+    def _forward_update_state(self, hidden, prev_h, b):
+        # update the hidden state SIR model (states are I R S E)
+        # @formatter:off
+        d1 = self.k * prev_h[:, 0]             # gamma * I  (infected people recovering)
+        d2 = prev_h[:, 0] * b * prev_h[:, 2]   # b * s * i  (susceptible people becoming exposed)
+        d3 = self.s * prev_h[:, 3]             # sigma * e  (exposed people becoming infected)
 
-            # update the hidden state SIR model (states are I R S E)
-            # @formatter:off
-            d1 = self.k * p[:, 0]       # gamma * I  (infected people recovering)
-            d2 = p[:, 0] * b * p[:, 2]  # b * s * i  (susceptible people becoming exposed)
-            d3 = self.s * p[:, 3]       # sigma * e  (exposed people becoming infected)
-
-            hidden[:, 3] = p[:, 3] + d2 - d3  # exposed = exposed + contact_rate * susceptible * infected - sigma * e
-            hidden[:, 0] = p[:, 0] + d3 - d1  # infected = infected + s * exposed - infected*recovery_rate
-            hidden[:, 1] = p[:, 1] + d1       # recovered = recovered + infected*recovery_rate
-            hidden[:, 2] = p[:, 2] - d2       # susceptible
-            # @formatter:on
-
-            # update the output
-            hidden = torch.clamp(hidden, 0, 1)  # all states must be positive
-
-            p = hidden.clone()
-            output = self.h2o(p)
-            outputs.append(output)
-            hiddens.append(p)
-
-        return torch.stack(hiddens), torch.stack(outputs)
+        hidden[:, 3] = prev_h[:, 3] + d2 - d3  # exposed = exposed + contact_rate * susceptible * infected - sigma * e
+        hidden[:, 0] = prev_h[:, 0] + d3 - d1  # infected = infected + s * exposed - infected*recovery_rate
+        hidden[:, 1] = prev_h[:, 1] + d1       # recovered = recovered + infected*recovery_rate
+        hidden[:, 2] = prev_h[:, 2] - d2       # susceptible
+        # @formatter:on
+        # TODO: this won't sum up correctly, should we min-max normalize
+        #  instead?
+        return torch.clamp(hidden, 0, 1)  # all states must be positive

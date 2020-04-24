@@ -136,14 +136,14 @@ else:
 
     # # Determine the 5 biggest county case rates in these 5 states:
     # # NY, NJ, CA, MI, PA, TX
-    #counties = [
-         # county, state, population, hospital beds
-         # ['King', 'Washington', 2.25e6, 8000],
-         # ['Harris','Texas', 4.7e6, 12000],
-         # ['New York City', 'New York', 8.0e6, 32000],
-         # ['Bexar', 'Texas', 1.99e6, 7793],
-         # ['Bexar', 'Texas', 2.00e6, 7793],
-     #]
+    # counties = [
+    # county, state, population, hospital beds
+    # ['King', 'Washington', 2.25e6, 8000],
+    # ['Harris','Texas', 4.7e6, 12000],
+    # ['New York City', 'New York', 8.0e6, 32000],
+    # ['Bexar', 'Texas', 1.99e6, 7793],
+    # ['Bexar', 'Texas', 2.00e6, 7793],
+    # ]
 
 # Instead of showing all plots, save them to disk instead
 SAVE_PLOTS = True
@@ -172,10 +172,10 @@ def main(Xs, Ys, names=None):
     else:
         X, Y = Xs, Ys
 
-    def build_model(e0, i0, b_lstm=False, update_k=False):
+    def build_model(e0, i0, b_model='linear', update_k=False):
         model = torch.nn.Sequential()
-        model.add_module('SEIRNet', SIRNet.SEIRNet(e0=e0, i0=i0, b_lstm=b_lstm,
-                                                   update_k=update_k))
+        model.add_module('SEIRNet', SIRNet.SEIRNet(
+            e0=e0, i0=i0, b_model=b_model, update_k=update_k))
         return model.to(device=device)
 
     def train(model, loss, optimizer, x, y, log_loss=True):
@@ -190,17 +190,17 @@ def main(Xs, Ys, names=None):
         output.backward()
         optimizer.step()
         for name, param in model.named_parameters():
-          if name == "SEIRNet.i2b.weight":
-             param.data.clamp_(1e-2)
+            if name == "SEIRNet.i2b.weight":
+                param.data.clamp_(1e-2)
         return output.data.item()
 
     ##################### Build and Train Model #################
     #############################################################
-    TRY_LSTM = False
-    # TRY_LSTM = True
+    B_MODEL = 'linear'
+    # B_MODEL = 'lstm'
     UPDATE_K = False
 
-    model = build_model(e0, i0, b_lstm=TRY_LSTM, update_k=UPDATE_K)
+    model = build_model(e0, i0, b_model=B_MODEL, update_k=UPDATE_K)
     loss = torch.nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.01)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=4000, gamma=0.1)
@@ -217,7 +217,7 @@ def main(Xs, Ys, names=None):
         iters = 1000
     else:
         model.load_state_dict(torch.load(weights_name))
-        #iters = 1000
+        # iters = 1000
         iters = 0
 
     # print([np.isnan(util.to_numpy(x)).any() for x in Xs])
@@ -245,13 +245,13 @@ def main(Xs, Ys, names=None):
         scheduler.step()
 
     # Plot R vs. mobility
-    W = np.squeeze(model.state_dict()['SEIRNet.i2b.weight'].numpy())
-    k = np.squeeze(model.state_dict()['SEIRNet.k'].numpy())
-    p = np.squeeze(model.state_dict()['SEIRNet.p'].numpy())
+    W = util.to_numpy(model.state_dict()['SEIRNet.i2b.weight'])
+    k = util.to_numpy(model.state_dict()['SEIRNet.k'])
+    p = util.to_numpy(model.state_dict()['SEIRNet.p'])
     ms = np.linspace(0, 1.2, 20)
-  
-    Re = [ np.sum(W*m)**p/k for m in ms]
-    plt.plot(ms,Re)
+
+    Re = [np.sum(W * m) ** p / k for m in ms]
+    plt.plot(ms, Re)
     plt.xlabel('Average mobility')
     plt.ylabel('Reproduction number')
     plt.title('R0 vs. Mobility')
@@ -368,6 +368,7 @@ def main(Xs, Ys, names=None):
         pct = int(np.mean(util.to_numpy(xN)[:5]) * 100)
 
         sir_state, total_cases = model(rX)
+        print(sir_state.shape, total_cases.shape)
 
         # Plot the SIR state
         s = util.to_numpy(sir_state)
@@ -541,7 +542,7 @@ def main(Xs, Ys, names=None):
     # fp.plot_data(data_list, day_list, legend_list, 0,
     #              Y * fp.population * reporting_rate, show=not SAVE_PLOTS)
     fp.plot_data(data_list, day_list, legend_list, 0,
-                 Y * population * reporting_rate) #, show=not SAVE_PLOTS)
+                 Y * population * reporting_rate)  # , show=not SAVE_PLOTS)
     if SAVE_PLOTS:
         plt.savefig(county_name + '_forecast_plotted.pdf')
         plt.close()
@@ -765,16 +766,16 @@ for county_data in counties:
     Y = Y / population
     # multiply by suspected under-reporting rate
     Y = Y / reporting_rate
-    print ('population, reporting rate', population, reporting_rate)
+    print('population, reporting rate', population, reporting_rate)
 
     if METHOD_e0i0 == 2:
         # i0 and e0 | current 
         i0 = Y[0]
-        e0 = 2.2*Y[0]
+        e0 = 2.2 * Y[0]
         # e0 minus the gradient between of Y (point at 0 and point at
         # delay_days) times delay_days = 2 * e0 - Y[delay_days], clip at 0
-        #e0 = Y[0]
-        #i0 = max(2 * e0 - Y[delay_days], 0)
+        # e0 = Y[0]
+        # i0 = max(2 * e0 - Y[delay_days], 0)
         print('e0={} | i0={}'.format(e0, i0))
     else:
         raise NotImplementedError('no METHOD_e0i0 for "{}"'.format(METHOD_e0i0))
@@ -797,8 +798,10 @@ for county_data in counties:
         try:
             main(X, Y)
         except Exception as e:
+            import traceback
+
             print('EXCEPTION WHILE RUNNING {}'.format(county_name))
-            print(e)
+            print(traceback.format_exc())
             print('Continuing...\n')
 
 if TRAIN_MULTIPLE:
