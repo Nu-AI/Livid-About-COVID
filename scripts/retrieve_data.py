@@ -1,6 +1,7 @@
 import pandas as pd
 import urllib.request
 import click
+import numpy as np
 
 ## Steps to do ---
 # Input will be county name and state name
@@ -18,7 +19,7 @@ pd.set_option('display.max_colwidth', -1)
 defaultParams={
     'country': 'United States',         # Can be only one country
     'states' : ['Texas', 'Washington'],               # Can enter either one or multiple state
-    'counties' : ['Bexar County', 'King County']    # Can enter multiple or one county. If all counties are required, fill in 'all'
+    'counties' : ['Bexar County', 'Dallas County', 'King County']  # Can enter multiple or one county. If all counties are required, fill in 'all'
 }
 
 class data_retriever():
@@ -117,14 +118,17 @@ class data_retriever():
     def get_cases_data(self, df_required):
 
         state_cases_update = lambda state_cases_df : state_cases_df[state_cases_df['state'].isin(self.states) & (state_cases_df['date'].isin(df_required['date'].unique().tolist()))]
+
         # If require county level cases data
         if self.counties is not None:
             state_cases_df = pd.read_csv(urllib.request.urlopen(
                 "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"))
             state_cases_df = state_cases_update(state_cases_df)
+
             # For all the counties in the state
             if 'all' in self.counties:
                 county_cases_df = state_cases_df.sort_values(by = ['county','date']).reset_index()
+
             # For selected counties in the state
             else:
                 new_counties = [county.split(" ")[0] for county in self.counties]
@@ -132,6 +136,7 @@ class data_retriever():
 
             county_cases_df=county_cases_df[['date', 'county', 'state', 'cases', 'deaths']]
             return self.reorganize_case_data(df_required,county_cases_df)
+
         # If require only state data
         else:
             state_cases_df = pd.read_csv(urllib.request.urlopen(
@@ -179,52 +184,129 @@ class data_retriever():
             new_county_df = new_county_df.append(pd.DataFrame.from_dict(new_temp_df))
         return new_county_df
 
+
+    def get_intervention_data(self):
+
+        df_data = pd.read_csv(urllib.request.urlopen(
+            "https://github.com/Keystone-Strategy/covid19-intervention-data/raw/master/complete_npis_inherited_policies.csv"),sep = ',', error_bad_lines=False)
+        print (df_data.keys())
+        if self.counties is not None:
+            if 'all' not in self.counties:
+                new_counties = [county.split(" ")[0] for county in self.counties]
+                df_intervention = df_data[df_data['county'].isin(new_counties) & df_data['state'].isin(self.states)]
+            else:
+                df_intervention = df_data[df_data['state'].isin(self.states) & df_data['county'].isnull()==False]
+        else:
+            df_intervention = df_data[df_data['state'].isin(self.states) & df_data['county'].isnull()==True]
+        return df_intervention
+
 def get_data(paramdict):
 
     data = data_retriever(country=paramdict['country'], states = paramdict['states'], counties = paramdict['counties'])
     df_required = data.get_mobility_data()
 
-    if paramdict['country'] == 'United States' or paramdict['country'] is None:
-        pop_df = data.get_population_data(df_required)
+    df_intervention = data.get_intervention_data()
 
-        pop_df = pop_df.reset_index(drop=True)
-        pop_df = pop_df[['State', 'Geographic Area', 'Unnamed: 12']]
-        county_list = pop_df.values.tolist()
-        pop_df.rename(columns={
-            'State' : 'State',
-            'Geographic Area' : 'County',
-            'Unnamed: 12': 'Population'
-        }, inplace=True)
-        pop_list = pop_df['Population'].tolist()
+    df_intervention = \
+    df_intervention[df_intervention['start_date'].isnull() == False | df_intervention['start_date'].isin([' '])][
+        ['county', 'state', 'npi', 'start_date']].dropna()
+    print (df_intervention)
 
-        pop_list = [i for i in pop_list for _ in range(int(len(df_required['sub_region_2'])/len(pop_list)))]
-        df_required['Population'] = pop_list
+    a = np.empty((len(df_required['date'])))
+    df_required['Intervention'] = a.fill(np.NaN)
 
-        county_cases_df = data.get_cases_data(df_required)
-        df_required['Cases'] = county_cases_df['cases'].values
-        df_required['Deaths'] = county_cases_df['deaths'].values
-        # Uncomment to save as csvs
-        # pop_df.to_csv("formatted_population.csv")
+    date_list =  pd.to_datetime(df_intervention['start_date'].tolist(), infer_datetime_format=True).tolist()
+    date_list = [str(i).split(" ")[0] for i in date_list]
+    #date_list = df_intervention['start_date'].tolist()
+    county_list = df_intervention['county'].tolist()
+    county_list = [i+" County" for i in county_list]
+    df_intervention['county']= county_list
+    df_intervention['start_date'] = date_list
+    df_intervention.rename(columns={
+        'start_date': 'date',
+        'county'    : 'sub_region_2'
+    },inplace =True)
+    columns = ['date', 'sub_region_2']
+    # temp_df = pd.concat((df_required[columns], df_intervention[columns]), ignore_index=True)
+    # temp_df = temp_df[temp_df.duplicated()]
+    # 
+    # temp_df = pd.merge(df_required, temp_df, how='inner')
+    # temp_df['Intervention'] = df_intervention['npi'].tolist()
+    # print (len(date_list), len(temp_df['date'].tolist()))
+    # print (temp_df[['date', 'sub_region_2', 'Intervention']])
+    # 
+    # new_date_list = df_intervention['date'].tolist()
+    # county_list = df_intervention['county'].tolist()
+    # comparator_list = sorted(list(zip(county_list,new_date_list)))
+    # npi_list = df_intervention['npi'].tolist()
+    # unique_comparisons = sorted(list(set(comparator_list)))
+    # new_npi_list = []
+    # 
+    # for i in range(len(unique_comparisons)):
+    #     string = ''
+    #     for j in range(len(comparator_list)):
+    #         if unique_comparisons[i]==comparator_list[j]:
+    #             if string !='':
+    #                 string = string + " & " +npi_list[j]
+    #             else:
+    #                 string = npi_list[j]
+    #     new_npi_list.append(string)
+    # 
+    # print (new_npi_list, "\n\n",unique_comparisons, len(new_npi_list))
+
+    #df_required = pd.merge(df_required,temp_df, how='outer', on=['date','sub_region_2'])
+    #df_required.loc[(df_required['date'].isin(date_list) and df_required['county'].isin(county_list)),'Intervention'] = df_intervention['npi'].tolist()
+    #df_required.loc[(df_required['date'].isin(temp_df['date']) & df_required['sub_region_2'].isin(temp_df['sub_region_2'])),['Intervention']] = df_intervention['npi'].tolist()
+    # print ( df_required.set_index(['date', 'sub_region_2']).reindex_like(temp_df.set_index(['date', 'sub_region_2'])).
+    #       combine_first(temp_df.set_index(['date', 'sub_region_2'])).reset_index())
 
 
-    df_required.rename(columns={
-        'index'                                             : 'Index',
-        'country_region'                                    : 'Country',
-        'sub_region_1'                                      : 'State',
-        'sub_region_2'                                      : 'County',
-        'date'                                              : 'date',
-        'retail_and_recreation_percent_change_from_baseline': 'Retail & recreation',
-        'grocery_and_pharmacy_percent_change_from_baseline' : 'Grocery & pharmacy',
-        'parks_percent_change_from_baseline'                : 'Parks',
-        'transit_stations_percent_change_from_baseline'     : 'Transit stations',
-        'workplaces_percent_change_from_baseline'           : 'Workplace',
-        'residential_percent_change_from_baseline'          : 'Residential'}, inplace=True)
-
-    df_required = df_required[['Index', 'Country', 'State', 'County', 'date', 'Population', 'Cases','Deaths', 'Retail & recreation',
-                               'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']]
-
-    # df_required.to_csv("formatted_all_data.csv")
-    print (df_required)
+    # for i in range(len(df_required['date'])):
+    #     if (df_required[])
+    #     a[i] = df_intervention['npi'][count]
+    #     count+=1
+    # # TODO incorporate population metrics for other countries
+    # if paramdict['country'] == 'United States' or paramdict['country'] is None:
+    #     pop_df = data.get_population_data(df_required)
+    #
+    #     pop_df = pop_df.reset_index(drop=True)
+    #     pop_df = pop_df[['State', 'Geographic Area', 'Unnamed: 12']]
+    #     county_list = pop_df.values.tolist()
+    #     pop_df.rename(columns={
+    #         'State' : 'State',
+    #         'Geographic Area' : 'County',
+    #         'Unnamed: 12': 'Population'
+    #     }, inplace=True)
+    #     pop_list = pop_df['Population'].tolist()
+    #
+    #     pop_list = [i for i in pop_list for _ in range(int(len(df_required['sub_region_2'])/len(pop_list)))]
+    #     df_required['Population'] = pop_list
+    #
+    #     county_cases_df = data.get_cases_data(df_required)
+    #     df_required['Cases'] = county_cases_df['cases'].values
+    #     df_required['Deaths'] = county_cases_df['deaths'].values
+    #     # Uncomment to save as csvs
+    #     # pop_df.to_csv("formatted_population.csv")
+    #
+    #
+    # df_required.rename(columns={
+    #     'index'                                             : 'Index',
+    #     'country_region'                                    : 'Country',
+    #     'sub_region_1'                                      : 'State',
+    #     'sub_region_2'                                      : 'County',
+    #     'date'                                              : 'date',
+    #     'retail_and_recreation_percent_change_from_baseline': 'Retail & recreation',
+    #     'grocery_and_pharmacy_percent_change_from_baseline' : 'Grocery & pharmacy',
+    #     'parks_percent_change_from_baseline'                : 'Parks',
+    #     'transit_stations_percent_change_from_baseline'     : 'Transit stations',
+    #     'workplaces_percent_change_from_baseline'           : 'Workplace',
+    #     'residential_percent_change_from_baseline'          : 'Residential'}, inplace=True)
+    #
+    # df_required = df_required[['Index', 'Country', 'State', 'County', 'date', 'Population', 'Cases','Deaths', 'Retail & recreation',
+    #                            'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']]
+    #
+    # # df_required.to_csv("formatted_all_data.csv")
+    # print (df_required)
 
 @click.command()
 @click.option('--country', default = defaultParams['country'])
