@@ -19,7 +19,6 @@ class SIRNetBase(ABC, torch.nn.Module):
 
         # Number of mobility points
         # TODO: this should be able to be reduced at least
-        # TODO: rename for when other inputs are used
         assert input_size == self.N_MOBILITY, \
             'Input dimension must be %d' % self.N_MOBILITY
         # Number of compartments of the SIR-like model
@@ -28,7 +27,6 @@ class SIRNetBase(ABC, torch.nn.Module):
         # Number of cases or other outputs
         assert output_size == self.N_OUTPUTS, \
             'Output dimension must be %d' % self.N_OUTPUTS
-
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
@@ -45,9 +43,8 @@ class SIRNetBase(ABC, torch.nn.Module):
                             requires_grad=False)
 
     def _make_b_model(self, lstm_hidden_size=None, lstm_bias=False):
+        """Transforms input to b parameter of SIR-like models"""
         if self.b_model == 'linear':
-            """Linear layer transforms input to b parameter of SIR-like models
-            """
             # Initialization from prior training
             b_init = torch.tensor(
                 [[7.3690e-02, 1.0000e-04, 1.0000e-04, 6.5169e-02, 1.4331e-01,
@@ -56,10 +53,8 @@ class SIRNetBase(ABC, torch.nn.Module):
             self.i2b = torch.nn.Linear(self.input_size, 1, bias=False)
             self.i2b.weight.data = b_init
         elif self.b_model == 'lstm':
-            """LSTM layer transforms input to b parameter of SIR-like models
-            """
             if lstm_hidden_size is None:
-                lstm_hidden_size = self.N_MOBILITY
+                lstm_hidden_size = self.N_MOBILITY  # good default
             self.i2l = torch.nn.LSTM(self.input_size, lstm_hidden_size,
                                      bias=lstm_bias)
             self.l2b = torch.nn.Linear(lstm_hidden_size, 1)
@@ -76,6 +71,33 @@ class SIRNetBase(ABC, torch.nn.Module):
             self.h_t = torch.zeros(1, 1, self.i2b.hidden_size)
             self.c_t = torch.zeros(1, 1, self.i2b.hidden_size)
 
+    def _forward_b(self, xt):
+        """Contact rate as a function of our input vector"""
+        if self.b_model == 'lstm':
+            b_inter, (self.h_t, self.c_t) = self.i2l(
+                xt[None, ...], (self.h_t, self.c_t)).squeeze(dim=1)
+            # TODO No negative contact rates...pytorch does not have LSTM
+            #  option to change tanh to relu this is dumb and needs fixing
+            #  here for valid b that also trains well...need custom LSTM
+            #  implementation in Python to change activation function
+            b = torch.relu(self.l2b(b_inter)).squeeze()
+        elif self.b_model == 'linear':
+            # 2.2 should be value of b under normal mobility [Kucharski et al]
+            # Remove residential mobility
+            # TODO: Not right spot for this. Disambiguate residential mobility..
+            xm = xt.clone()
+            xm[0, 5] = 0
+            # log of the contact rate as linear combination of mobility squared
+            # b = torch.clamp(torch.exp(-self.i2b(xm)), 0)
+            # Just look at norm of mobility- this is actually very good/
+            # maybe more reliable.
+            # b = self.q * torch.norm(X[t, 0, :5]) ** self.p
+            b = torch.relu(self.i2b(xm)) ** self.p  # Best method so far
+        else:
+            raise RuntimeError('b_model is invalid, this should not have '
+                               'happened')  # earlier check in _make_b_model()
+        return b
+
     @abstractmethod
     def _forward_update_state(self, hidden, prev_h, b, *args, **kwargs):
         """Update the SIR-like state of the model. Subclasses must implement
@@ -86,7 +108,7 @@ class SIRNetBase(ABC, torch.nn.Module):
         """It may be a good idea to update this in subclasses, and necessarily
         must do so is the order of the SIR-like compartments does NOT begin with
         I, R"""
-        return hidden[:, 0] + hidden[:, 1]
+        return (hidden[:, 0] + hidden[:, 1])[..., None]  # add dimension w/ None
 
     def _forward_cleanup(self):
         if self.b_model == 'lstm':
@@ -107,40 +129,13 @@ class SIRNetBase(ABC, torch.nn.Module):
         hiddens = []
         outputs = []
         for t in range(time_steps):
-            # contact rate as a function of our input vector
-            if self.b_model == 'lstm':
-                b_inter, (self.h_t, self.c_t) = self.i2l(
-                    X[None, t], (self.h_t, self.c_t)).squeeze(dim=1)
-                # TODO No negative contact rates...pytorch does not have LSTM
-                #  option to change tanh to relu this is dumb and needs fixing
-                #  here for valid b that also trains well...need custom LSTM
-                #  implementation in Python to change activation function
-                b = torch.relu(self.l2b(b_inter)).squeeze()
-            elif self.b_model == 'linear':
-                # 2.2 should be the value of b under normal mobility [Kucharski
-                # et al]
-                # Remove residential mobility
-                # TODO: Not right spot for this. Disambiguate residential
-                #  mobility...
-                xm = X[t].clone()
-                xm[0, 5] = 0
-                # log of the contact rate as a linear combination of mobility
-                # squared
-                # b = torch.clamp(torch.exp(-self.i2b(xm)), 0)
-                # Just look at norm of mobility- this is actually very good/
-                # maybe more reliable.
-                # b = self.q * torch.norm(X[t, 0, :5]) ** self.p
-                # Best so far
-                b = torch.relu(self.i2b(xm)) ** self.p
-            else:
-                raise RuntimeError('b_model is invalid, this should not have '
-                                   'happened')
+            # compute b
+            b = self._forward_b(X[t])
             # update the hidden state of SIR-like model
             hidden = self._forward_update_state(hidden, prev_h, b)
             # update the outputs
             prev_h = hidden.clone()
-            output = self._forward_output(hidden)
-            outputs.append(output)
+            outputs.append(self._forward_output(prev_h))
             hiddens.append(prev_h)
         # End of loop cleanup
         self._forward_cleanup()
