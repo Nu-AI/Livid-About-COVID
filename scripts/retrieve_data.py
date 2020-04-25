@@ -147,73 +147,100 @@ class data_retriever():
 
 
     # Reorganizing the data to match the mobility and population table
+
     def reorganize_case_data(self, df_required, df_county_cases):
 
         new_county_df = pd.DataFrame()
         new_temp_df = {}
         date_length =  len(df_required['date'].unique().tolist())
+        # Get the list of the counties provided when
+        # Specifically provided
         if (self.counties is not None):
             new_counties = [county.split(" ")[0] for county in self.counties]
+        # All the couties are required
         elif 'all' in self.counties:
             new_counties = list(df_county_cases['county'].unique())
+        # Only for the state as a total
         else:
             new_counties = self.states
 
+        # Obtain the case data for the coutnies or states
         for county in new_counties:
             if self.counties is not None:
                 temp_df = df_county_cases[df_county_cases['county']==county]
             else:
                 temp_df = df_county_cases[df_county_cases['state']==county]
+            # Extend the case list to map with the mobility and population dataa
             extend = lambda x,y: list(x[y].unique())*date_length
+            # Create a dictionary for cases and deaths in the selected region
             case_list = list(temp_df['cases'].values)
             death_list = list(temp_df['deaths'].values)
             for _ in range(date_length-len(temp_df['cases'].tolist())):
                 case_list.insert(0,0)
                 death_list.insert(0,0)
             if (len(temp_df['cases'].tolist())< date_length):
+                # Extend other columns in the table
                 new_temp_df['state'] = extend(temp_df,'state')
                 if (self.counties is not None):
                     new_temp_df['county'] = extend(temp_df, 'county')
-
+                # Fill in the dictionary
                 new_temp_df['date'] = list(df_required['date'].unique())
 
                 new_temp_df['cases'] = case_list
                 new_temp_df['deaths'] = death_list
             else:
                 new_county_df = new_county_df.append(temp_df)
+            # Convert the dictionary to a dataframe
             new_county_df = new_county_df.append(pd.DataFrame.from_dict(new_temp_df))
         return new_county_df
 
 
+    # Get the intervention setting dates for the different counties and states in USA
     def get_intervention_data(self):
 
         df_data = pd.read_csv(urllib.request.urlopen(
-            "https://github.com/Keystone-Strategy/covid19-intervention-data/raw/master/complete_npis_inherited_policies.csv"),sep = ',', error_bad_lines=False)
-        print (df_data.keys())
+            "https://github.com/Keystone-Strategy/covid19-intervention-data/raw/master/complete_npis_inherited_policies.csv")
+            , sep = ',', error_bad_lines=False)
+
+        # Filter the dataframe based on whether it is required for the counties or states
         if self.counties is not None:
+            # Separate case in the case required for all the counties
             if 'all' not in self.counties:
                 new_counties = [county.split(" ")[0] for county in self.counties]
                 df_intervention = df_data[df_data['county'].isin(new_counties) & df_data['state'].isin(self.states)]
             else:
                 df_intervention = df_data[df_data['state'].isin(self.states) & df_data['county'].isnull()==False]
+        # Keep only the state intervention dates
         else:
             df_intervention = df_data[df_data['state'].isin(self.states) & df_data['county'].isnull()==True]
 
         return df_intervention
 
+
+# Combined function to form the final table with all the required data
+
 def get_data(paramdict):
 
+    # Initialize the data retriever class
     data = data_retriever(country=paramdict['country'], states = paramdict['states'], counties = paramdict['counties'])
+
+    # Start with the mobility data
     df_required = data.get_mobility_data()
 
+    # The below case exists because of lack of data integration for countries other than USA
 
     # # TODO incorporate population metrics for other countries
     if paramdict['country'] == 'United States' or paramdict['country'] is None:
-        pop_df = data.get_population_data(df_required)
 
+        # Get the poppulation data
+        pop_df = data.get_population_data(df_required)
         pop_df = pop_df.reset_index(drop=True)
+
+        # Decimate non required columns
         pop_df = pop_df[['State', 'Geographic Area', 'Unnamed: 12']]
         county_list = pop_df.values.tolist()
+
+        # Rename the columns to proper distribution
         pop_df.rename(columns={
             'State' : 'State',
             'Geographic Area' : 'County',
@@ -221,12 +248,17 @@ def get_data(paramdict):
         }, inplace=True)
         pop_list = pop_df['Population'].tolist()
 
+        # Resize the array to the required size as mobility
         pop_list = [i for i in pop_list for _ in range(int(len(df_required['sub_region_2'])/len(pop_list)))]
         df_required['Population'] = pop_list
-
+        
+        # Retrieve the active cases and the total deaths
         county_cases_df = data.get_cases_data(df_required)
+        
+        # Add the cases and deaths to the final table
         df_required['Cases'] = county_cases_df['cases'].values
         df_required['Deaths'] = county_cases_df['deaths'].values
+        
         # Uncomment to save as csvs
         # pop_df.to_csv("formatted_population.csv")
 
@@ -234,33 +266,36 @@ def get_data(paramdict):
     ### Add the intervention data to the required dataframe
     df_intervention = data.get_intervention_data()
 
+    # Decimate the unuseful columns from the dataframe
     df_intervention = \
         df_intervention[df_intervention['start_date'].isnull() == False | df_intervention['start_date'].isin([' '])][
             ['county', 'state', 'npi', 'start_date']]
-    print(df_intervention)
 
+    # Select whether it is required for counties or states
     if paramdict['counties'] is None:
         id_string = 'sub_region_1'
     else:
         id_string = 'sub_region_2'
+        # Update the county names to map with the main table
         county_list = df_intervention['county'].tolist()
         county_list = [i + " County" for i in county_list]
         df_intervention['county'] = county_list
 
     a = np.empty((len(df_required['date'])))
     df_required['Intervention'] = a.fill(np.NaN)
-
+    
+    # Updating the date values to map with the main table
     date_list = pd.to_datetime(df_intervention['start_date'].tolist(), infer_datetime_format=True).tolist()
     date_list = [str(i).split(" ")[0] for i in date_list]
-    # date_list = df_intervention['start_date'].tolist()
 
-
+    # Rename the columns of the intervention dataframe to sync with the required table
     df_intervention['start_date'] = date_list
     df_intervention.rename(columns={
         'start_date': 'date',
         'state' : 'sub_region_1',
         'county': 'sub_region_2'
     }, inplace=True)
+    
     columns = ['date', 'sub_region_2']
 
     # temp_df = pd.concat((df_required[columns], df_intervention[columns]), ignore_index=True)
@@ -271,13 +306,18 @@ def get_data(paramdict):
     # print (len(date_list), len(temp_df['date'].tolist()))
     # print (temp_df[['date', 'sub_region_2', 'Intervention']])
 
+    # Create a new dictionary to be merged with the required table
     new_date_list = df_intervention['date'].tolist()
     county_list = df_intervention[id_string].tolist()
+    
+    # Combine the state/county with the dates 
     comparator_list = list(zip(county_list, new_date_list))
     npi_list = df_intervention['npi'].tolist()
+    # Create tuples of unique combinations
     unique_comparisons = sorted(list(set(comparator_list)))
     new_npi_list = []
-
+    
+    # Merge the interventions that were on the same day
     for i in range(len(unique_comparisons)):
         string = ''
         for j in range(len(comparator_list)):
@@ -288,8 +328,7 @@ def get_data(paramdict):
                     string = npi_list[j]
         new_npi_list.append(string)
 
-    #print(new_npi_list, "\n\n", unique_comparisons, len(new_npi_list))
-
+    # Populate the new dictionary with the reformatted intervention data and convert to dataframe
     updated_county_list = [unique_comparisons[i][0] for i in range(len(unique_comparisons))]
     updated_date_list = [unique_comparisons[i][1] for i in range(len(unique_comparisons))]
     dict_intervention = {}
@@ -298,11 +337,14 @@ def get_data(paramdict):
     dict_intervention['Intervention'] = new_npi_list
     new_df_intervention = pd.DataFrame.from_dict(dict_intervention)
 
+
+    # Combine the intervention dataframe with the main required table 
     df_1 = df_required.set_index(['date', id_string])
     df_2 = new_df_intervention.set_index(['date', id_string])
     df_required = df_1.combine_first(df_2).reset_index()
     df_required = df_required.sort_values(by=['sub_region_1', 'sub_region_2', 'date'])
 
+    # Rename the columns of the required table
     df_required.rename(columns={
         'index'                                             : 'Index',
         'country_region'                                    : 'Country',
@@ -316,11 +358,13 @@ def get_data(paramdict):
         'workplaces_percent_change_from_baseline'           : 'Workplace',
         'residential_percent_change_from_baseline'          : 'Residential'}, inplace=True)
 
+    # Keep only the useful columns in the dataframe
     df_required = df_required[['Index', 'Country', 'State', 'County', 'date', 'Population', 'Cases','Deaths', 'Retail & recreation',
                                'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential','Intervention']].reset_index()
     # df_required.to_csv("formatted_all_data.csv")
-    print (df_required)
-
+    
+    
+# Parameters to change to get the data    
 @click.command()
 @click.option('--country', default = defaultParams['country'])
 @click.option('--states', default = defaultParams['states'])
