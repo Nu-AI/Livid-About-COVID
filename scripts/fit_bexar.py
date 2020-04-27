@@ -10,8 +10,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import torch
-from torch import optim
+#from torch import optim
 import datetime as dt
+import retrieve_data 
 
 ############### Paths ##############################
 ####################################################
@@ -35,26 +36,31 @@ from SIRNet import util, trainer
 
 ## ASSUMPTIONS: Let's put these properties right up front where they belong ###
 ###############################################################################
-reporting_rate = 0.60    # Portion of cases that are actually detected
+reporting_rate = 0.3    # Portion of cases that are actually detected
 delay_days = 10          # Days between becoming infected / positive confirmation (due to incubation period / testing latency
 bed_pct = 0.40           # Portion of hospital beds that can be allocated for Covid-19 patients
-hosp_rate = 0.20         # Portion of cases that result in hospitalization
-start_model = 5          # The day where we begin our fit
+start_model = 20         # The day where we begin our fit
+
+# Retrieve Data
+paramdict = {}
+paramdict['country'] = 'United States'
+paramdict['states'] = ['Texas']
+paramdict['counties'] = ['Bexar County']
+df = retrieve_data.get_data(paramdict)
 
 
 ############### Gathering Data #####################
 ####################################################
-if not os.path.exists('us-counties.csv'):
-    urllib.request.urlretrieve(
-        'https://raw.githubusercontent.com/nytimes/'
-        'covid-19-data/master/us-counties.csv',
-        'us-counties.csv'
-    )
-    urllib.request.urlretrieve(
-        'https://raw.githubusercontent.com/nytimes/'
-        'covid-19-data/master/us-states.csv',
-        'us-states.csv'
-    )
+urllib.request.urlretrieve(
+    'https://raw.githubusercontent.com/nytimes/'
+    'covid-19-data/master/us-counties.csv',
+    'us-counties.csv'
+)
+urllib.request.urlretrieve(
+    'https://raw.githubusercontent.com/nytimes/'
+    'covid-19-data/master/us-states.csv',
+    'us-states.csv'
+)
 
 
 ###########   Get case data         ########################
@@ -68,7 +74,6 @@ with open('us-counties.csv', 'r') as f:
     for row in csv_reader:
         if row[1] == county_name and row[2] == state_name:
             cases[row[0]] = row[4]  # cases by date
-
 k = list(cases.keys())
 print ('Cases data goes from {} to {}'.format(k[0],k[-1]))
 
@@ -84,52 +89,11 @@ cases = shift_cases
 k = list(cases.keys())
 print ('Cases data goes from {} to {}'.format(k[0],k[-1])) # These are the dates we will use to look up mobility data
 
-# Load Activity Data
-state_path = os.path.join(DATA_DIR, 'Mobility data',
-                          '{}_mobility.csv'.format(state_name))
-mkeys = ['Retail & recreation', 'Grocery & pharmacy', 'Parks',
-         'Transit stations', 'Workplace', 'Residential']
-
-if os.path.exists(state_path):
-    row1_filt = state_name
-    row2_filt = lambda s: s.replace(' County', '') == county_name
-else:
-    print('No county-level mobility available.  Reverting to state')
-    state_path = os.path.join(DATA_DIR, 'Mobility data', 'US_mobility.csv')
-    row1_filt = 'US'
-    row2_filt = lambda s: s == state_name
-
-mobilities = {}
-for category in mkeys:
-    mobilities[category] = OrderedDict()
-    with open(state_path, 'r') as f:
-        csv_reader = csv.reader(f, delimiter=',')
-        header = next(csv_reader)
-        for row in csv_reader:
-            if (row[1] == row1_filt and row2_filt(row[2]) and
-                    row[3] == category):
-                dates = eval(row[6])
-                vals = eval(row[7])
-                for i, date in enumerate(dates):
-                    mobilities[category][date] = vals[i]
-
-# Rearrange activity data
+# Format retrieved mobility data
+mkeys = ['Retail & recreation', 'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']
 mobility = OrderedDict()
-dates = list(mobilities['Retail & recreation'].keys())
-for i, date in enumerate(dates):
-    # NOTE: some dates are missing in the data, so we fall back to the
-    #  previous day's data here
-    def k_by_date_or_fallback(k):
-        j = i  # start with current date
-        while j >= 0:
-            date_or_fallback = dates[j]
-            if mobilities[k].get(date_or_fallback) is not None:
-                return mobilities[k][date_or_fallback]
-            j -= 1
-        raise ValueError('Data did not have a valid fallback date.')
-
-    mobility[date] = [k_by_date_or_fallback(k) for k in mkeys]
-
+for i, key in enumerate(df['date']):
+  mobility[key] = [df[mkey][i] for mkey in mkeys]
 k = list(mobility.keys())
 print ('Mobility data goes from {} to {}'.format(k[0],k[-1]))
 
@@ -141,61 +105,17 @@ for k in cases.keys():
         continue
     data.append(mobility[k] + [cases[k]])  # total cases
     common_dates.append(k)
+print('The common dates are', common_dates)
 day0 = common_dates[0]  # common day (will need to delay later)
-
-# Estimate hospitalization rate
-p = []
-df = pd.read_csv(
-    os.path.join(DATA_DIR, 'US_County_AgeGrp_2018.csv'),
-    encoding='cp1252'
-)
-a = df.loc[(df['STNAME'] == state_name) &
-           (df['CTYNAME'] == county_name + ' County')]
-key_list = []
-for keys in a.keys():
-    key_list.append(keys)
-print(key_list)
-
-# TODO: comment these (or make more efficient via pandas)
-p0_19 = 0
-p20_44 = 0
-p45_64 = 0
-p65_74 = 0
-p75_84 = 0
-p85_p = 0
-for i in range(len(key_list)):
-    if 4 < i < 8:
-        p0_19 += int(a[key_list[i]])
-    elif 7 < i < 13:
-        p20_44 += int(a[key_list[i]])
-    elif 12 < i < 17:
-        p45_64 += int(a[key_list[i]])
-    elif 16 < i < 19:
-        p65_74 += int(a[key_list[i]])
-    elif 18 < i < 21:
-        p75_84 += int(a[key_list[i]])
-    else:
-        p85_p = int(a[key_list[21]])
-p = [p0_19, p20_44, p45_64, p65_74, p75_84, p85_p]
-print('the p value is', p)
-rates = []
-
-hr_filename = os.path.join(DATA_DIR, 'covid_hosp_rate_by_age.csv')
-with open(hr_filename, 'r', encoding='mac_roman') as f:
-    csv_reader = csv.reader(f, delimiter=',')
-    header = next(csv_reader)
-    for row in csv_reader:
-        rates.append(np.asarray(row))
-
-temp = np.mean(np.asarray(rates).astype(float))
-hosp_rate = np.sum(np.asarray(p).astype(float) * temp, axis=0)
-hosp_rate /= a[key_list[3]]
 
 
 ###################### Formatting Data ######################
 #############################################################
 # Data is 6 columns of mobility, 1 column of case number
 data = np.asarray(data).astype(np.float32)
+print('The data is')
+for row in data:
+  print(row)
 
 data[:, :6] = (1.0 + data[:, :6] / 100.0)  # convert percentages of change to fractions of activity
 print('data.shape', data.shape)
@@ -241,22 +161,21 @@ Y = Y.reshape(Y.shape[0], 1, 1)  # time x batch x channels
 weights_name = WEIGHTS_DIR + '/{}_weights.pt'.format(county_name)
 trainer = trainer.Trainer(weights_name)
 model = trainer.build_model(e0,i0)
-trainer.train(model, X, Y, 1000)
+trainer.train(model, X, Y, 300)
 
 # Plot R vs. mobility
-W = np.squeeze(model.state_dict()['SEIRNet.i2b.weight'].numpy())
-k = np.squeeze(model.state_dict()['SEIRNet.k'].numpy())
-p = np.squeeze(model.state_dict()['SEIRNet.p'].numpy())
-q = np.squeeze(model.state_dict()['SEIRNet.q'].numpy())
-ms = np.linspace(0, 1.2, 20)
-
-Re = [ np.sum(W*m)**p/k for m in ms]
-plt.plot(ms,Re)
-plt.xlabel('Average mobility')
-plt.ylabel('Reproduction number')
-plt.title('R0 vs. Mobility')
-plt.grid()
-plt.show()
+#W = np.squeeze(model.state_dict()['SEIRNet.i2b.weight'].numpy())
+#k = np.squeeze(model.state_dict()['SEIRNet.k'].numpy())
+#p = np.squeeze(model.state_dict()['SEIRNet.p'].numpy())
+#q = np.squeeze(model.state_dict()['SEIRNet.q'].numpy())
+#ms = np.linspace(0, 1.2, 20)
+#Re = [ np.sum(W*m)**p/k for m in ms]
+#plt.plot(ms,Re)
+#plt.xlabel('Average mobility')
+#plt.ylabel('Reproduction number')
+#plt.title('R0 vs. Mobility')
+#plt.grid()
+#plt.show()
 
 ################ Forecasting #######################
 ####################################################
@@ -311,7 +230,7 @@ cl = {}
 cl[25] = 'a'
 cl[50] = 'b'
 cl[75] = 'c'
-cl[100] = 'd'
+cl[100]= 'd'
 
 # Default text size
 plt.rcParams.update({'font.size': 22})
