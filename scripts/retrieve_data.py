@@ -179,24 +179,26 @@ class data_retriever():
             new_counties = self.states
 
         # Obtain the case data for the counties or states
-        #print(len(new_counties))
         county_list = list(df_required['sub_region_2'].values)
-        #print (new_counties, "\n\n\n, *************** \n\n\n")
+
         for county in new_counties:
             if self.counties is not None:
+                # Check if the case data for counties required are present in the case dataframe
                 if (county.split(" ")[0] in all_case_counties):
                     temp_df = df_county_cases[df_county_cases['county']==county.split(" ")[0]]
+                # Fill the ones with no case data with zeros
                 else:
                     temp_df = df_required[df_required['sub_region_2']==county]
                     county_length = len(temp_df)
-                    #print (county_length,county, " \n\n")
+                    # Create a new dictionary with the required length
                     temp_df['cases'] = [0]*county_length
                     temp_df['deaths'] = [0]*county_length
                     temp_df['county'] = [county]*county_length
                     temp_df['state'] = temp_df['sub_region_1'].tolist()
                     temp_df = temp_df[['date','county','state','cases','deaths']]
+            # In the case of state data
             else:
-                temp_df = df_county_cases[df_county_cases['state']==county.split(" ")[0]]
+                temp_df = df_county_cases[df_county_cases['state']==county.split]
 
             length = county_list.count(county)
             # Extend the case list to map with the mobility and population data
@@ -204,38 +206,28 @@ class data_retriever():
             # Create a dictionary for cases and deaths in the selected region
             case_list = list(temp_df['cases'].values)
             death_list = list(temp_df['deaths'].values)
-            #print (county, case_list)
             for _ in range(length-len(temp_df['cases'].tolist())):
                 case_list.insert(0,0)
                 death_list.insert(0,0)
 
             if (len(temp_df['cases'].tolist())< length):
                 # Extend other columns in the table
-                #new_temp_df['state'] = extend(temp_df,'state')
                 new_temp_df['state'] = df_required.loc[df_required['sub_region_2']==county]['sub_region_1'].tolist()
                 if (self.counties is not None):
-                    #new_temp_df['county'] = extend(temp_df, 'county')
                     new_temp_df['county'] = df_required.loc[df_required['sub_region_2'] == county]['sub_region_2'].tolist()
 
                 # Fill in the dictionary
                 new_temp_df['date'] = df_required.loc[df_required['sub_region_2']==county]['date'].tolist()
-                #print (len(list(new_temp_df['date'])), len(case_list), len(death_list), length,len(list(new_temp_df['state'])))
-                #print (len(case_list), "*******")
                 new_temp_df['cases'] = case_list
                 new_temp_df['deaths'] = death_list
                 new_county_df = pd.DataFrame.from_dict(new_temp_df)
+
+                # Append the dataframes
                 new_county_df_list.append(new_county_df)
             else:
                 new_county_df_list.append(temp_df)
-                #new_county_df_list.append(temp_df)
-                #new_county_df = new_county_df.append(temp_df, sort=True)
-
-            # Convert the dictionary to a dataframe
-            # new_county_df = new_county_df.append(pd.DataFrame.from_dict(new_temp_df),sort=True)
-
 
         return pd.concat(new_county_df_list,sort=True)
-
 
 
     # Get the intervention setting dates for the different counties and states in USA
@@ -292,28 +284,27 @@ def get_data(paramdict):
             'Unnamed: 12': 'Population'
         }, inplace=True)
         pop_list = pop_df['Population'].tolist()
-        #print (df_required['sub_region_2'].size, "\n", df_required['sub_region_2'].nunique(), len(pop_list))
+
+        # Create an updated population list to account for the variability in sizes of mobility data
         county_list = list(df_required['sub_region_2'].values)
         unique_list = list(df_required['sub_region_2'].unique())
-        # print (df_required['sub_region_2'].unique())
-        # print (pop_df['County'])
         counter = [county_list.count(i) for i in unique_list]
-        print (counter, "\n", len(counter), "\n", sum(counter), "\n\n", unique_list)
-        # pop_list = [i for i in pop_list for _ in range(int(len(df_required['sub_region_2'])/len(pop_list)))]
         pop_list = [pop_list[j] for j in range(len(counter)) for _ in range(counter[j])]
-        #print (len(pop_list))
 
         df_required['Population'] = pop_list
+
         # Retrieve the active cases and the total deaths
         county_cases_df = data.get_cases_data(df_required)
+
         #print (county_cases_df['cases'])
         # new_county_list = list(county_cases_df['county'].values)
         # new_counter_list = [new_county_list.count(i) for i in unique_list]
         # print (new_counter_list)
+
         # Add the cases and deaths to the final table
         df_required['Cases'] = county_cases_df['cases'].values
         df_required['Deaths'] = county_cases_df['deaths'].values
-        #print (df_required.head(100))
+
         # Uncomment to save as csvs
         # pop_df.to_csv("formatted_population.csv")
 
