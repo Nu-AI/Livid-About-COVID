@@ -64,7 +64,7 @@ class Trainer(object):
                     start, end = k * batch_size, (k + 1) * batch_size
                     cost += self.iteration(model, loss, optimizer, X[start:end],
                                            Y[start:end])
-                if (i + 1) % 100 == 0:
+                if (i + 1) % 50 == 0:
                     print('\nEpoch = %d, cost = %s' %
                           (i + 1, cost / num_batches))
                     print('The model fit is: ')
@@ -74,3 +74,4 @@ class Trainer(object):
             #  file. Mitigation: store epoch number in filename
             scheduler.step()
         torch.save(model.state_dict(), self.weights_path)
+        return cost
