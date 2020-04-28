@@ -362,6 +362,7 @@ def get_data(paramdict):
     df_required = df_required[['Index', 'Country', 'State', 'County', 'date', 'Population', 'Cases','Deaths', 'Retail & recreation',
                                'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential','Intervention']].reset_index()
     # df_required.to_csv("formatted_all_data.csv")
+    return df_required
     
     
 # Parameters to change to get the data    
