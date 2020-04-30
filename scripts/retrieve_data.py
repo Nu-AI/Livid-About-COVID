@@ -19,8 +19,8 @@ pd.set_option('display.max_colwidth', -1)
 # If require data for only country or states, then set counties to None
 defaultParams={
     'country': 'United States',         # Can be only one country
-    'states' : ['Texas'],               # Can enter either one or multiple state
-    'counties' : ['Bexar County', 'Travis County']  # Can enter multiple or one county. If all counties are required, fill in 'all'
+    'states' : ['Texas', 'Washington'],               # Can enter either one or multiple state
+    'counties' : ['Bexar County','Travis County','King County']  # Can enter multiple or one county. If all counties are required, fill in 'all'
 }
 
 class data_retriever():
@@ -31,8 +31,15 @@ class data_retriever():
         self.counties = counties
 
 
-    def extend_required_df(self,df_required, no_days):
+    def extend_required_df(self,df_required):
         keylist = ['country_region', 'sub_region_1', 'sub_region_2']
+        state_cases_df = pd.read_csv(urllib.request.urlopen(
+            "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"))
+        date_list = state_cases_df['date'].unique().tolist()
+        date2 = pd.to_datetime(date_list[-1])
+        date1 = pd.to_datetime(df_required['date'][df_required.index[-1]])
+        no_days = int((str(date2-date1)).split(" ")[0])
+        #print (date)
         county_list = list(df_required['sub_region_2'].values)
         unique_list = list(df_required['sub_region_2'].unique())
         counter = [county_list.count(i) for i in unique_list]
@@ -63,7 +70,7 @@ class data_retriever():
         unique_list = df_required[region].unique().tolist()
         #print (len(unique_list), "The unique elements", unique_list)
         for county in unique_list:
-            df = self.extend_required_df(df_required[df_required[region]==county],7)
+            df = self.extend_required_df(df_required[df_required[region]==county])
             new_df_list.append(df)
         return pd.concat(new_df_list, sort=True)
 
