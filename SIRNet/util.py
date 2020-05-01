@@ -2,6 +2,7 @@ import warnings
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 
 def to_numpy(tensor, squeeze=True):
@@ -41,3 +42,12 @@ def plot_sir_state(sir_state, title='SIR_state', show=True):
         plt.title(title)
     if show:
         plt.show()
+
+def plt_setup():
+    # Default text size
+    plt.rcParams.update({'font.size': 22})
+    plt.grid(True)
+    plt.legend()
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+    plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=30))
+    plt.gcf().autofmt_xdate()

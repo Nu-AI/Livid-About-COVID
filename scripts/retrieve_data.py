@@ -475,6 +475,7 @@ def get_data(paramdict):
              'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']].reset_index()
     df_required.to_csv("formatted_all_data.csv")
     print (df_required)
+    return df_required
 
 # Parameters to change to get the data
 @click.command()

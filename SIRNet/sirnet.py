@@ -91,8 +91,8 @@ class SIRNetBase(ABC, torch.nn.Module):
             # b = torch.clamp(torch.exp(-self.i2b(xm)), 0)
             # Just look at norm of mobility- this is actually very good/
             # maybe more reliable.
-            # b = self.q * torch.norm(X[t, 0, :5]) ** self.p
-            b = torch.relu(self.i2b(xm)) ** self.p  # Best method so far
+            b = self.q * torch.norm(xm) ** self.p
+            # b = torch.relu(self.i2b(xm)) ** self.p  # Best method so far
         else:
             raise RuntimeError('b_model is invalid, this should not have '
                                'happened')  # earlier check in _make_b_model()
