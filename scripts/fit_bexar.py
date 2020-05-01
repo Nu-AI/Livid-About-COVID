@@ -10,25 +10,21 @@ import retrieve_data
 ############### Paths ##############################
 ####################################################
 
-# root of workspace
 ROOT_DIR = os.path.join(os.path.dirname(__file__), '..')
 sys.path.append(ROOT_DIR)
-# directory of data
-DATA_DIR = os.path.join(ROOT_DIR, 'data')
 
 WEIGHTS_DIR = os.path.join(ROOT_DIR, 'model_weights')
 if not os.path.exists(WEIGHTS_DIR):
     os.mkdir(WEIGHTS_DIR)
 
-# directory of results
 RESULTS_DIR = os.path.join(ROOT_DIR, 'Prediction_results')
 if not os.path.exists(RESULTS_DIR):
     os.mkdir(RESULTS_DIR)
 
 from SIRNet import util, trainer
 
-## ASSUMPTIONS: Let's put these properties right up front where they belong ###
-###############################################################################
+########### ASSUMPTIONS ##############################
+######################################################
 reporting_rate = 0.1     # Portion of cases that are actually detected
 delay_days = 10          # Days between becoming infected / positive confirmation (due to incubation period / testing latency
 start_model = 23         # The day where we begin our fit
@@ -43,13 +39,12 @@ df = retrieve_data.get_data(paramdict)
 
 mobility = df[['Retail & recreation', 'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']]
 cases = df['Cases']
-dates = df['date']
+day0 = df['date'][0]
 population = df['Population'][0]
 
 # offset case data by delay days (treat it as though it was recorded earlier)
 cases = np.array(cases[delay_days:])
 mobility = np.array(mobility[:-delay_days])
-day0 = dates[0]
 county_name = 'Bexar'
 
 ###################### Formatting Data ######################
@@ -139,7 +134,7 @@ plt.title('Total Case Count')
 plt.ylabel('Count')
 plt.yscale('log')
 util.plt_setup()
-plt.savefig('{}_Total_Cases.pdf'.format(timestamp))
+plt.savefig(RESULTS_DIR + '/{}_Total_Cases.pdf'.format(timestamp))
 plt.show()
 
 # Plots 2 & 3. Active Cases (zoomed out and zoomed in)
@@ -154,5 +149,5 @@ for zoom in [True, False]:
   plt.ylabel('Count')
   if zoom: plt.ylim((0, gt[-1]))
   util.plt_setup()
-  plt.savefig('{}_Active_Cases{}.pdf'.format(timestamp, zoom))
+  plt.savefig(RESULTS_DIR + '/{}_Active_Cases{}.pdf'.format(timestamp, zoom))
   plt.show()
