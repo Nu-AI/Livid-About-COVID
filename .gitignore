@@ -9,6 +9,7 @@ Hospitals-By-Beds.csv
 
 # Local & generated files
 .idea/
+archive/
 model.png
 scripts_local/
 data_local/

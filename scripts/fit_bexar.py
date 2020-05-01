@@ -10,7 +10,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import torch
-#from torch import optim
 import datetime as dt
 import retrieve_data 
 
@@ -36,7 +35,7 @@ from SIRNet import util, trainer
 
 ## ASSUMPTIONS: Let's put these properties right up front where they belong ###
 ###############################################################################
-reporting_rate = 0.3    # Portion of cases that are actually detected
+reporting_rate = 0.1    # Portion of cases that are actually detected
 delay_days = 10          # Days between becoming infected / positive confirmation (due to incubation period / testing latency
 bed_pct = 0.40           # Portion of hospital beds that can be allocated for Covid-19 patients
 start_model = 20         # The day where we begin our fit
@@ -124,7 +123,7 @@ print('Initial mobility', data[0, :])
 # Initial conditions
 i0 = float(data[start_model-1, 6]) / population / reporting_rate
 e0 = 2.2*i0/5.0
-data = data[start_model:] # sart on day 5
+data = data[start_model:] # start on day 5
 
 # Split into input and output data
 X, Y = data[:, :6], data[:, 6]
@@ -162,20 +161,6 @@ weights_name = WEIGHTS_DIR + '/{}_weights.pt'.format(county_name)
 trainer = trainer.Trainer(weights_name)
 model = trainer.build_model(e0,i0)
 trainer.train(model, X, Y, 300)
-
-# Plot R vs. mobility
-#W = np.squeeze(model.state_dict()['SEIRNet.i2b.weight'].numpy())
-#k = np.squeeze(model.state_dict()['SEIRNet.k'].numpy())
-#p = np.squeeze(model.state_dict()['SEIRNet.p'].numpy())
-#q = np.squeeze(model.state_dict()['SEIRNet.q'].numpy())
-#ms = np.linspace(0, 1.2, 20)
-#Re = [ np.sum(W*m)**p/k for m in ms]
-#plt.plot(ms,Re)
-#plt.xlabel('Average mobility')
-#plt.ylabel('Reproduction number')
-#plt.title('R0 vs. Mobility')
-#plt.grid()
-#plt.show()
 
 ################ Forecasting #######################
 ####################################################
