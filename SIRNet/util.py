@@ -43,6 +43,7 @@ def plot_sir_state(sir_state, title='SIR_state', show=True):
     if show:
         plt.show()
 
+
 def plt_setup():
     # Default text size
     plt.rcParams.update({'font.size': 22})

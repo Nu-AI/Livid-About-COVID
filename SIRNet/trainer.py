@@ -74,4 +74,4 @@ class Trainer(object):
             #  file. Mitigation: store epoch number in filename
             scheduler.step()
         torch.save(model.state_dict(), self.weights_path)
-        return cost
+        return cost  # the final cost
