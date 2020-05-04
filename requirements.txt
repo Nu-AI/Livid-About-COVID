@@ -3,17 +3,19 @@ tensorflow-gpu
 #tensorflow-cpu
 
 # pytorch
-torch
+torch~=1.4.1
 
 # Others
 keras
-seaborn
-matplotlib
-numpy
+seaborn~=0.10.0
+matplotlib~=3.2.1
+numpy~=1.18.3
 scipy
 scikit-learn
-pandas
+pandas~=1.0.3
 jupyter
 pydot
 # For reading excel files via pandas
 xlrd
+
+click
