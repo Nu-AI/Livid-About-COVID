@@ -18,10 +18,6 @@ pd.set_option('display.max_colwidth', -1)
 
 # Setting the parameters for the data required.
 # If require data for only country or states, then set counties to None
-# defaultParams = {
-#     'country': 'United States',         # Can be only one country
-#     'states' : ['Texas', 'Washington'],               # Can enter either one or multiple state
-#     'counties' : ['Bexar County','Travis County','King County']  # Can enter multiple or one county. If all counties are required, fill in 'all'
 defaultParams={
     'country': 'Spain',         # Can be only one country
     'states' : None,               # Can enter either one or multiple states
