@@ -143,7 +143,9 @@ class data_retriever():
         final_pop_df = pd.DataFrame()
         # Iterate over the given paths for the states required
         for paths in base_path:
-            pop_df = pd.read_excel(urllib.request.urlopen(paths), skiprows = 2, skipfooter=5)
+            # Can alternate between the below 2 lines if one is not working and throws a hhtprequest exception
+            #pop_df = pd.read_excel(urllib.request.urlopen(paths), skiprows = 2, skipfooter=5)
+            pop_df = pd.read_excel(paths, skiprows = 2, skipfooter = 5)
             pop_df = pop_df[['Geographic Area', 'Unnamed: 12']].iloc[1:].reset_index()
             Area_list = pop_df['Geographic Area']
             area_list = [i.split(',')[0].replace('.', '') for i in Area_list]
