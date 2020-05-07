@@ -3,6 +3,7 @@ import urllib.request
 import click
 import numpy as np
 import warnings
+
 warnings.filterwarnings("ignore")
 ## Steps to do ---
 # Input will be county name and state name
@@ -20,7 +21,7 @@ pd.set_option('display.max_colwidth', -1)
 # If require data for only country or states, then set counties to None
 defaultParams={
     'country': 'United States',         # Can be only one country
-    'states' : ['Texas'],               # Can enter either one or multiple states
+    'states' : ['Delaware', 'Connecticut'],               # Can enter either one or multiple states
     'counties' : ['all'] # Can enter multiple or one county. If all counties are required, fill in ['all']
 }
 
@@ -166,11 +167,11 @@ class data_retriever():
     def get_population_data(self, df_required):
 
         LUT_dict = self.get_lookup_table()
-        state_list = df_required['sub_region_1'].unique().tolist()
-
+        state_list = df_required['sub_region_1'].dropna().unique().tolist()
+        #print (state_list)
         # retrieve the population data based on the state provided
         base_path = ["https://www2.census.gov/programs-surveys/popest/tables/2010-2019/counties/totals/co-est2019-annres-{}.xlsx".format(LUT_dict[state]) for state in state_list]
-
+        #print (base_path)
         i = 0
         final_pop_df = pd.DataFrame()
         # Iterate over the given paths for the states required
@@ -436,6 +437,7 @@ def get_data(paramdict):
     ### Add the intervention data to the required dataframe
 
         if (paramdict['counties'] is None or 'all' not in paramdict['counties']):
+        #if (paramdict['counties'] is not None):
             #print ("entered the condition")
             df_intervention = data.get_intervention_data()
 
@@ -450,9 +452,9 @@ def get_data(paramdict):
             else:
                 id_string = 'sub_region_2'
                 # Update the county names to map with the main table
-                county_list_i = df_intervention['county'].tolist()
+                county_list_i = list(df_intervention['county'].values)
                 #print (county_list_i)
-                county_list_i = [i + " County" for i in county_list_i]
+                county_list_i = [str(i) + " County" for i in county_list_i]
                 df_intervention['county'] = county_list_i
 
             a = np.empty((len(df_required['date'])))
