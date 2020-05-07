@@ -21,7 +21,7 @@ pd.set_option('display.max_colwidth', -1)
 # If require data for only country or states, then set counties to None
 defaultParams={
     'country': 'United States',         # Can be only one country
-    'states' : ['Delaware', 'Connecticut'],               # Can enter either one or multiple states
+    'states' : ['Texas'],               # Can enter either one or multiple states
     'counties' : ['all'] # Can enter multiple or one county. If all counties are required, fill in ['all']
 }
 
@@ -231,7 +231,7 @@ class data_retriever():
                 new_counties = [county.split(" ")[0] for county in self.counties]
                 county_cases_df = state_cases_df[state_cases_df['county'].isin(new_counties)].sort_values(by=['county','date'])
 
-            county_cases_df=county_cases_df[['date', 'county', 'state', 'cases', 'deaths']]
+            county_cases_df=county_cases_df[['fips', 'date', 'county', 'state', 'cases', 'deaths']]
             #print (county_cases_df)
             #print(county_cases_df['date'])
             #print (county_cases_df.head(80))
@@ -428,8 +428,8 @@ def get_data(paramdict):
         #print(df_required.size)
         df_required['Cases'] = county_cases_df['cases'].values
         df_required['Deaths'] = county_cases_df['deaths'].values
-
-
+        fips_list = county_cases_df['fips'].values
+        df_required['fips'] = list(map(int, fips_list))
         # Uncomment to save as csvs
         # pop_df.to_csv("formatted_population.csv")
 
@@ -537,12 +537,12 @@ def get_data(paramdict):
         # Keep only the useful columns in the dataframe
         if (paramdict['counties'] is None or 'all' not in paramdict['counties']):
 
-            df_required = df_required[['Index', 'Country', 'State', 'County', 'date', 'Population', 'Cases','Deaths', 'Retail & recreation',
+            df_required = df_required[['Index', 'fips', 'Country', 'State', 'County', 'date', 'Population', 'Cases','Deaths', 'Retail & recreation',
                                    'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential','Intervention']].reset_index()
 
         else:
             df_required = df_required[
-                ['Index', 'Country', 'State', 'County', 'date', 'Population', 'Cases', 'Deaths', 'Retail & recreation',
+                ['Index', 'fips', 'Country', 'State', 'County', 'date', 'Population', 'Cases', 'Deaths', 'Retail & recreation',
                  'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']].reset_index()
     df_required.to_csv("formatted_all_data.csv")
     print (df_required.head(200))
