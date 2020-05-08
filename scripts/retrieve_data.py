@@ -228,10 +228,11 @@ class data_retriever():
 
             # For selected counties in the state
             else:
-                new_counties = [county.split(" ")[0] for county in self.counties]
+                new_counties = [" ".join(county.split(" ")[:-1]) for county in self.counties]
                 county_cases_df = state_cases_df[state_cases_df['county'].isin(new_counties)].sort_values(by=['county','date'])
 
             county_cases_df=county_cases_df[['fips', 'date', 'county', 'state', 'cases', 'deaths']]
+            print (county_cases_df['fips'].unique().tolist())
             #print (county_cases_df)
             #print(county_cases_df['date'])
             #print (county_cases_df.head(80))
@@ -282,12 +283,14 @@ class data_retriever():
 
         # Obtain the case data for the counties or states
         county_list = list(df_required['sub_region_2'].values)
-
+        print(df_county_cases['fips'].unique().tolist())
         for county in new_counties:
             if self.counties is not None:
                 # Check if the case data for counties required are present in the case dataframe
+
                 if (county in all_case_counties):
-                    temp_df = df_county_cases[df_county_cases['county']==county.split(" ")[0]]
+                    temp_df = df_county_cases[df_county_cases['county']==' '.join(county.split(" ")[:-1])]
+                    print (temp_df)
                     county_name_list = list(temp_df['county'].values)
                     new_county_name_list = []
                     for val in county_name_list:
@@ -295,6 +298,7 @@ class data_retriever():
                             new_val = val+" County"
                             new_county_name_list.append(new_val)
                     temp_df['county'] = new_county_name_list
+                    #print (temp_df['fips'], " \n Condition 1", county)
                 # Fill the ones with no case data with zeros
                 else:
                     temp_df = df_required[df_required['sub_region_2']==county]
@@ -303,8 +307,10 @@ class data_retriever():
                     temp_df['cases'] = [0]*county_length
                     temp_df['deaths'] = [0]*county_length
                     temp_df['county'] = [county]*county_length
+                    temp_df['fips'] = [0]*county_length
                     temp_df['state'] = temp_df['sub_region_1'].tolist()
-                    temp_df = temp_df[['date','county','state','cases','deaths']]
+                    temp_df = temp_df[['fips','date','county','state','cases','deaths']]
+                    #print(temp_df['fips'], " \n Condition 2")
             # In the case of state data
             else:
                 temp_df = df_county_cases[df_county_cases['state']==county.split(" ")[0]]
@@ -316,9 +322,13 @@ class data_retriever():
             #print (temp_df)
             case_list = list(temp_df['cases'].values)
             death_list = list(temp_df['deaths'].values)
+            fips_list = list(temp_df['fips'].values)
+            print (temp_df.keys(),"\n",fips_list)
+            fips_val = fips_list[0]
             for _ in range(length-len(temp_df['cases'].tolist())):
                 case_list.insert(0,0)
                 death_list.insert(0,0)
+                fips_list.insert(0,fips_val)
 
             if (len(temp_df['cases'].tolist())< length):
                 #print ("Entered this condition")
@@ -328,9 +338,11 @@ class data_retriever():
                     new_temp_df['county'] = df_required.loc[df_required['sub_region_2'] == county]['sub_region_2'].tolist()
 
                 # Fill in the dictionary
+                new_temp_df['fips'] = fips_list
                 new_temp_df['date'] = df_required.loc[df_required['sub_region_2']==county]['date'].tolist()
                 new_temp_df['cases'] = case_list
                 new_temp_df['deaths'] = death_list
+
                 new_county_df = pd.DataFrame.from_dict(new_temp_df)
 
                 # Append the dataframes
@@ -353,7 +365,7 @@ class data_retriever():
         if self.counties is not None:
             # Separate case in the case required for all the counties
             if 'all' not in self.counties:
-                new_counties = [county.split(" ")[0] for county in self.counties]
+                new_counties = [" ".join(county.split(" ")[:-1]) for county in self.counties]
                 df_intervention = df_data[df_data['county'].isin(new_counties) & df_data['state'].isin(self.states)]
             else:
                 df_intervention = df_data[df_data['state'].isin(self.states) & df_data['county'].isnull()==False]
