@@ -12,8 +12,8 @@ import plotly.express as px
 import geojson
 from os import path
 
-# basepath = path.dirname("scratch_dashboard.py")
-# filepath = path.abspath(path.join(basepath,"Covid_project/GEOJSONS/"))
+basepath = path.dirname("scratch_dashboard.py")
+filepath = path.abspath(path.join(basepath,"Covid_project/GEOJSONS/"))
 #geojson_file = geojson.load("2020-03-18.geojson")
 with open ("2020-04-25.geojson","r") as readfile:
     geojson_file = geojson.load(readfile)
@@ -199,10 +199,11 @@ def plot_map(selected_date):
     else:
         with open("2020-04-25.geojson", "r") as readfile:
             geojson_file = geojson.load(readfile)
+    px.set_mapbox_access_token(mapbox_access_token)
     fig = px.choropleth_mapbox(formatted_data, geojson=geojson_file, locations='fips', color='Cases',
                        featureidkey="properties.id",
                        color_continuous_scale="Viridis",
-                       mapbox_style=mapbox_style,
+                       mapbox_style="carto-darkmatter",
                        zoom=4.8, center = {"lat": 31.3, "lon": -99.2},
                        opacity=0.5,
                        labels={'Cases':'Number of cases'}
@@ -256,43 +257,46 @@ def plot_data(selected_date):
 
     #case_df_filtered = county_cases_df[county_cases_df['date'] == selected_date]
     print(selected_date, "****", dates[int(selected_date)])
-    full_df_filtered = df[df['date'] == dates[selected_date]]
+
+    full_df_filtered = df[df['date'] == DATE_MODIFIED[selected_date]]
 
     mob_df = df[df['County']=='Bexar County']
     mob_df = mob_df[['date','Retail & recreation',
                                     'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']]
     mob_df.reset_index(drop=True, inplace=True)
 
-    print (mob_df)
+    #print (mob_df)
     mob_df = mob_df.set_index('date')
-    print (mob_df.keys())
+    #print (mob_df.keys())
 
     full_df_filtered = full_df_filtered.loc[full_df_filtered['County'].isin(county_list)]
     required_df = full_df_filtered[['County','Retail & recreation',
                                     'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential','Cases', 'Deaths']].reset_index()
-
-    print(required_df)
+    #print(df.loc[df['County'] == 'Bexar County']['Cases'], "\n\n\n*****", required_df['Cases','County'])
+    print (required_df[['Cases','County']], "\n\n\n")
+    #print(required_df.head(10))
     #fig = required_df.iplot(kind='bar', title="Mobility data per day")
 
     fig = px.bar(required_df, x="County",y="Cases", title="Cases in the counties")
     fig_layout = fig["layout"]
     fig_data = fig["data"]
     print ("test_value")
-    print (fig_data)
+    #print (fig_data)
 
     fig3 = px.bar(required_df, x="County", y="Deaths", title="Deaths in the different counties")
-    fig3_layout= fig["layout"]
-    fig3_data = fig["data"]
+    fig3_layout= fig3["layout"]
+    fig3_data = fig3["data"]
     # fig_data[0]["text"] = deaths_or_rate_by_fips.values.tolist()
     fig2 = mob_df.iplot(asFigure=True, title="Average Mobility over time")
     fig2_layout = fig2["layout"]
     fig2_data = fig2["data"]
+    fig2.update_layout(
+        legend=dict(bgcolor="#1f2630")
+    )
     set_figure_template(fig_data,fig_layout)
     set_figure_template(fig2_data,fig2_layout)
     set_figure_template(fig3_data, fig3_layout)
-    fig2.update_layout(
-        legend = dict(bgcolor="#1f2630")
-    )
+
 
 
     # fig_data[0]["marker"]["color"] = "#2cfec1"
