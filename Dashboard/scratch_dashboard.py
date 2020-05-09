@@ -5,15 +5,15 @@ import pandas as pd
 from dash.dependencies import Input, Output, State
 import cufflinks as cf
 import urllib.request
-import retrieve_data_v2 as rc
-import GEOJSONs
+#import retrieve_data_v2 as rc
+#import GEOJSONs
 import numpy as np
 import plotly.express as px
 import geojson
 from os import path
 
-basepath = path.dirname("scratch_dashboard.py")
-filepath = path.abspath(path.join(basepath,"Covid_project/GEOJSONS/"))
+# basepath = path.dirname("scratch_dashboard.py")
+# filepath = path.abspath(path.join(basepath,"Covid_project/GEOJSONS/"))
 #geojson_file = geojson.load("2020-03-18.geojson")
 with open ("2020-04-25.geojson","r") as readfile:
     geojson_file = geojson.load(readfile)
