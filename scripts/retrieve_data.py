@@ -168,6 +168,7 @@ class data_retriever():
 
         LUT_dict = self.get_lookup_table()
         state_list = df_required['sub_region_1'].dropna().unique().tolist()
+        state_list = ["_".join(state.split(" ")) for state in state_list]
         #print (state_list)
         # retrieve the population data based on the state provided
         base_path = ["https://www2.census.gov/programs-surveys/popest/tables/2010-2019/counties/totals/co-est2019-annres-{}.xlsx".format(LUT_dict[state]) for state in state_list]
