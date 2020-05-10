@@ -21,8 +21,8 @@ pd.set_option('display.max_colwidth', -1)
 # If require data for only country or states, then set counties to None
 defaultParams={
     'country': 'United States',         # Can be only one country
-    'states' : ['Texas'],               # Can enter either one or multiple states
-    'counties' : ['all'] # Can enter multiple or one county. If all counties are required, fill in ['all']
+    'states' : ['New York'],               # Can enter either one or multiple states
+    'counties' : ['New York County'] # Can enter multiple or one county. If all counties are required, fill in ['all']
 }
 
 class data_retriever():
@@ -168,14 +168,18 @@ class data_retriever():
 
         LUT_dict = self.get_lookup_table()
         state_list = df_required['sub_region_1'].dropna().unique().tolist()
+
         state_list = ["_".join(state.split(" ")) for state in state_list]
-        #print (state_list)
+
         # retrieve the population data based on the state provided
         base_path = ["https://www2.census.gov/programs-surveys/popest/tables/2010-2019/counties/totals/co-est2019-annres-{}.xlsx".format(LUT_dict[state]) for state in state_list]
-        #print (base_path)
+
+        state_list = [" ".join(state.split("_")) for state in state_list]
+
         i = 0
         final_pop_df = pd.DataFrame()
         # Iterate over the given paths for the states required
+        count = 0
         for paths in base_path:
             # Can alternate between the below 2 lines if one is not working and
             # throws a hhtprequest exception
@@ -185,19 +189,22 @@ class data_retriever():
             pop_df = pop_df[['Geographic Area', 'Unnamed: 12']].iloc[1:].reset_index()
             Area_list = pop_df['Geographic Area']
             area_list = [i.split(',')[0].replace('.', '') for i in Area_list]
+            print (area_list,state_list)
             pop_df['Geographic Area'] = area_list
-            get_state_arr = lambda state_list, pop_df :[state_list[i]] * len(pop_df['Geographic Area'].tolist())
+            get_state_arr = lambda state_list, pop_df :[state_list[count]] * len(pop_df['Geographic Area'].tolist())
             # Filter out the data required for the counties
             if (self.counties is not None):
-                pop_df = pop_df.where(pop_df['Geographic Area'].isin(df_required[df_required['sub_region_1']==state_list[i]]\
+                pop_df = pop_df.where(pop_df['Geographic Area'].isin(df_required[df_required['sub_region_1']==state_list[count]]\
                     ['sub_region_2'].unique())==True).dropna(how='all').reset_index()
 
                 pop_df['State'] = get_state_arr(state_list, pop_df)
 
+                count +=1
             # Just get the population for the required state
             else:
                 pop_df = pop_df.where(pop_df['Geographic Area']==state_list[i]).dropna(how='all').reset_index()
                 pop_df['State'] = get_state_arr(state_list, pop_df)
+                count +=1
             final_pop_df = final_pop_df.append(pop_df,sort=True)
             i+=1
 
@@ -213,6 +220,19 @@ class data_retriever():
             state_cases_df = pd.read_csv(urllib.request.urlopen(
                 "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"))
             state_cases_df = state_cases_update(state_cases_df)
+
+            # Special Case for New York City
+            state_cases_df = state_cases_df.replace("New York City", "New York")
+            state_cases_df.loc[state_cases_df["county"]=="New York", 'fips'] = 36061
+
+            # temp_df = state_cases_df[state_cases_df["county"]=="New York"]
+            # fip_list = state_cases_df.loc[state_cases_df["county"]=="New York"]['fips'].values.tolist()
+            # new_fip_list = [36061]*len(fip_list)
+            # temp_df['fips'] = new_fip_list
+            # #state_cases_df[state_cases_df["county"]=="New York"]['fips'] = temp_df['fips']
+            # #print (temp_df)
+            # #state_cases_df.loc[state_cases_df["county"]=="New York"]['fips']].fillna(value=36061, inplace=True)
+
             unique_counties = state_cases_df['county'].unique().tolist()
             county_list = []
             for county in unique_counties:
@@ -230,6 +250,7 @@ class data_retriever():
             # For selected counties in the state
             else:
                 new_counties = [" ".join(county.split(" ")[:-1]) for county in self.counties]
+                #print (new_counties)
                 county_cases_df = state_cases_df[state_cases_df['county'].isin(new_counties)].sort_values(by=['county','date'])
 
             county_cases_df=county_cases_df[['fips', 'date', 'county', 'state', 'cases', 'deaths']]
@@ -284,15 +305,16 @@ class data_retriever():
 
         # Obtain the case data for the counties or states
         county_list = list(df_required['sub_region_2'].values)
-        print(df_county_cases['fips'].unique().tolist())
+        #print(df_county_cases['fips'].unique().tolist())
         for county in new_counties:
             if self.counties is not None:
                 # Check if the case data for counties required are present in the case dataframe
 
                 if (county in all_case_counties):
                     temp_df = df_county_cases[df_county_cases['county']==' '.join(county.split(" ")[:-1])]
-                    print (temp_df)
+                    #print (temp_df, " ".join(county.split(" ")[:-1]))
                     county_name_list = list(temp_df['county'].values)
+                    #print (county_name_list)
                     new_county_name_list = []
                     for val in county_name_list:
                         if "County" not in val:
@@ -415,6 +437,7 @@ def get_data(paramdict):
         county_list = list(df_required['sub_region_2'].values)
         unique_list = list(df_required['sub_region_2'].unique())
         counter = [county_list.count(i) for i in unique_list]
+        print (counter, pop_list)
         pop_list = [pop_list[j] for j in range(len(counter)) for _ in range(counter[j])]
 
         df_required['Population'] = pop_list
