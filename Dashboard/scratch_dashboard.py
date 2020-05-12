@@ -13,35 +13,26 @@ import geojson
 from os import path
 
 basepath = path.dirname("scratch_dashboard.py")
-filepath = path.abspath(path.join(basepath,"Covid_project/GEOJSONS/"))
+filepath = path.abspath(path.join(basepath,"GEOJSONs/"))
 #geojson_file = geojson.load("2020-03-18.geojson")
 with open ("2020-04-25.geojson","r") as readfile:
     geojson_file = geojson.load(readfile)
 print (geojson_file['features'][0])
 
 formatted_data = pd.read_csv("formatted_all_data.csv",dtype={"fips":str})
+# formatterd_data_orig = formatted_data.copy()
 # print (temp.head(10))
 # print (formatted_data.head(10))
 formatted_data['fips'] = formatted_data['fips'].apply(lambda x:str(x).zfill(5))
 
-formatted_data = formatted_data[formatted_data['date']=="2020-04-25"]
+# formatted_data = formatted_data[formatted_data['date']=="2020-04-25"]
 
-formatted_data = formatted_data[['fips','Cases']]
+# formatted_data = formatted_data[['fips','Cases'x]]
 
 print (formatted_data.head(10))
 mapbox_access_token = "pk.eyJ1IjoicGxvdGx5bWFwYm94IiwiYSI6ImNrOWJqb2F4djBnMjEzbG50amg0dnJieG4ifQ.Zme1-Uzoi75IaFbieBDl3A"
 mapbox_style = "mapbox://styles/plotlymapbox/cjvprkf3t1kns1cqjxuxmwixz"
 px.set_mapbox_access_token(mapbox_access_token)
-
-rep_fig = px.choropleth_mapbox(formatted_data, geojson=geojson_file, locations='fips', color='Cases',
-                           featureidkey="properties.id",
-                           color_continuous_scale="Inferno",
-                           mapbox_style=mapbox_style,
-                           zoom=4.8, center = {"lat": 31.3, "lon": -99.2},
-                           opacity=0.5,
-                           labels={'Cases':'Number of cases'}
-                    )
-
 
 paramdict = {}
 paramdict['country'] = 'United States'
@@ -71,7 +62,7 @@ dates = df['date'].unique().tolist()
 # print (len(dates))
 
 DATE_MODIFIED = [dates[i] for i in range(len(dates)) if i % 5 == 0]
-
+print (DATE_MODIFIED)
 app.layout = html.Div(
     id='root',
     children=[
@@ -130,6 +121,38 @@ app.layout = html.Div(
                                 in Texas counties on selected date {0}".format(DATE_MODIFIED[0]),
                                 id="heatmap-title",
                                 ),
+                                dcc.Dropdown
+                                (
+                                    options =
+                                    [
+                                        {
+                                          "label": "Retail & recreation",
+                                          "value": "Retail & recreation",
+                                        },
+                                        {
+                                          "label": "Parks",
+                                          "value": "Parks",
+                                        },
+                                        {
+                                          "label": "Residential",
+                                          "value": "Residential",
+                                        },
+                                        {
+                                          "label": "Grocery & Pharmacy",
+                                          "value": "Grocery & pharmacy",
+                                        },
+                                        {
+                                          "label": "Transit Stations",
+                                          "value": "Transit stations",
+                                        },
+                                        {
+                                          "label": "Workplace",
+                                          "value": "Workplace",
+                                        },
+                                    ],
+                                        value = "Residential",
+                                        id = "chart-dropdown",
+                                ),
                                 dcc.Graph
                                 (
                                     id="county_chloropleth"
@@ -156,6 +179,22 @@ app.layout = html.Div(
                     id="graph-container",
                     children=
                     [
+                        html.P
+                        (
+                            "Mobility percentage with respect to baseline",
+                            id = "prediction_title",
+                        ),
+                        dcc.RadioItems(
+                            id="Radio_block1",
+                            options=[
+                                {'label': '0%','value':'0'},
+                                {'label': '25%','value':'1'},
+                                {'label': '75%','value':'2'},
+                                {'label': '100%','value':'3'},
+                                ],
+                                value='0',
+                                labelStyle = {'display': 'inline-block', 'margin': '5px'}
+                        ),
                         dcc.Graph
                         (id='slider_graph',
                             figure=dict(
@@ -187,23 +226,33 @@ app.layout = html.Div(
     ],
 )
 
-
 @app.callback(
     Output("county_chloropleth", "figure"),
-    [Input("date_slider", "value")]
+    [Input("date_slider", "value"),
+     Input("chart-dropdown", "value")]
 )
-def plot_map(selected_date):
-    if selected_date=="2020-04-25":
-        with open("2020-04-25.geojson", "r") as readfile:
-            geojson_file = geojson.load(readfile)
-    else:
-        with open("2020-04-25.geojson", "r") as readfile:
-            geojson_file = geojson.load(readfile)
+def plot_map(selected_date, selected_mob):
+    # if selected_date=="2020-04-25":
+    #     with open("2020-04-25.geojson", "r") as readfile:
+    #         geojson_file = geojson.load(readfile)
+    # else:
+    path_new = path.abspath(path.join(filepath,str(DATE_MODIFIED[selected_date])))
+
+    #path_new = path.join(filepath,str(DATE_MODIFIED[selected_date]))
+    print (path_new, "*********", DATE_MODIFIED[selected_date])
+    with open("{}.geojson".format(path_new, "r")) as readfile:
+        geojson_file = geojson.load(readfile)
+
     px.set_mapbox_access_token(mapbox_access_token)
-    fig = px.choropleth_mapbox(formatted_data, geojson=geojson_file, locations='fips', color='Cases',
+    data_copy = formatted_data.copy()
+    target = str(selected_mob)
+    data_copy = data_copy[['County',target, 'fips']]
+
+    fig = px.choropleth_mapbox(data_copy, geojson=geojson_file, locations='fips', color=target,
                        featureidkey="properties.id",
-                       color_continuous_scale="Viridis",
-                       mapbox_style="carto-darkmatter",
+                       color_continuous_scale="Inferno",
+                       mapbox_style=mapbox_style,
+                       hover_data= ['County', target, 'fips'],
                        zoom=4.8, center = {"lat": 31.3, "lon": -99.2},
                        opacity=0.5,
                        labels={'Cases':'Number of cases'}
@@ -251,15 +300,19 @@ def set_figure_template(fig_data,fig_layout):
     [Output("slider_graph", "figure"),
     Output("slider_graph_2", 'figure'),
     Output("slider_graph_3", 'figure')],
-    [Input("date_slider", "value")]
+    [Input("date_slider", "value"),
+     Input("Radio_block1", "value")]
 )
-def plot_data(selected_date):
+def plot_data(selected_date, selected_percent):
 
     #case_df_filtered = county_cases_df[county_cases_df['date'] == selected_date]
     print(selected_date, "****", dates[int(selected_date)])
 
     full_df_filtered = df[df['date'] == DATE_MODIFIED[selected_date]]
-
+    if (selected_percent) == "0":
+        print ("entered the condition")
+    else:
+        print ("other conditions")
     mob_df = df[df['County']=='Bexar County']
     mob_df = mob_df[['date','Retail & recreation',
                                     'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']]
@@ -296,8 +349,6 @@ def plot_data(selected_date):
     set_figure_template(fig_data,fig_layout)
     set_figure_template(fig2_data,fig2_layout)
     set_figure_template(fig3_data, fig3_layout)
-
-
 
     # fig_data[0]["marker"]["color"] = "#2cfec1"
     # fig_data[0]["marker"]["opacity"] = 1
