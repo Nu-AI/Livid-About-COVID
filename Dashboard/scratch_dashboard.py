@@ -15,9 +15,9 @@ from os import path
 basepath = path.dirname("scratch_dashboard.py")
 filepath = path.abspath(path.join(basepath,"GEOJSONs/"))
 #geojson_file = geojson.load("2020-03-18.geojson")
-with open ("2020-04-25.geojson","r") as readfile:
-    geojson_file = geojson.load(readfile)
-print (geojson_file['features'][0])
+# with open ("2020-04-25.geojson","r") as readfile:
+#     geojson_file = geojson.load(readfile)
+# print (geojson_file['features'][0])
 
 formatted_data = pd.read_csv("formatted_all_data.csv",dtype={"fips":str})
 # formatterd_data_orig = formatted_data.copy()
