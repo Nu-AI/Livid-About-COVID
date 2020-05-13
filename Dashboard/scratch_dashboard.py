@@ -15,9 +15,9 @@ from os import path
 basepath = path.dirname("scratch_dashboard.py")
 filepath = path.abspath(path.join(basepath,"GEOJSONs/"))
 #geojson_file = geojson.load("2020-03-18.geojson")
-# with open ("2020-04-25.geojson","r") as readfile:
-#     geojson_file = geojson.load(readfile)
-# print (geojson_file['features'][0])
+with open ("2020-04-25.geojson","r") as readfile:
+    geojson_file = geojson.load(readfile)
+print (geojson_file['features'][0])
 
 formatted_data = pd.read_csv("formatted_all_data.csv",dtype={"fips":str})
 # formatterd_data_orig = formatted_data.copy()
@@ -117,7 +117,7 @@ app.layout = html.Div(
                             [
                                 html.P
                                 (
-                                "Heatmap of cases \
+                                "Heatmap of mobility \
                                 in Texas counties on selected date {0}".format(DATE_MODIFIED[0]),
                                 id="heatmap-title",
                                 ),
@@ -232,10 +232,7 @@ app.layout = html.Div(
      Input("chart-dropdown", "value")]
 )
 def plot_map(selected_date, selected_mob):
-    # if selected_date=="2020-04-25":
-    #     with open("2020-04-25.geojson", "r") as readfile:
-    #         geojson_file = geojson.load(readfile)
-    # else:
+
     path_new = path.abspath(path.join(filepath,str(DATE_MODIFIED[selected_date])))
 
     #path_new = path.join(filepath,str(DATE_MODIFIED[selected_date]))
@@ -350,22 +347,6 @@ def plot_data(selected_date, selected_percent):
     set_figure_template(fig2_data,fig2_layout)
     set_figure_template(fig3_data, fig3_layout)
 
-    # fig_data[0]["marker"]["color"] = "#2cfec1"
-    # fig_data[0]["marker"]["opacity"] = 1
-    # fig_data[0]["marker"]["line"]["width"] = 0
-    # fig_data[0]["textposition"] = "outside"
-    # fig_layout["paper_bgcolor"] = "#1f2630"
-    # fig_layout["plot_bgcolor"] = "#1f2630"
-    # fig_layout["font"]["color"] = "#2cfec1"
-    # fig_layout["title"]["font"]["color"] = "#2cfec1"
-    # fig_layout["xaxis"]["tickfont"]["color"] = "#2cfec1"
-    # fig_layout["yaxis"]["tickfont"]["color"] = "#2cfec1"
-    # fig_layout["xaxis"]["gridcolor"] = "#5b5b5b"
-    # fig_layout["yaxis"]["gridcolor"] = "#5b5b5b"
-    # fig_layout["margin"]["t"] = 75
-    # fig_layout["margin"]["r"] = 50
-    # fig_layout["margin"]["b"] = 100
-    # fig_layout["margin"]["l"] = 50
 
     return fig,fig3,fig2
 
