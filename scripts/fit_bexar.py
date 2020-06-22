@@ -1,11 +1,9 @@
 import os
 import sys
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import torch
 import datetime as dt
-import retrieve_data 
 
 ############### Paths ##############################
 ####################################################
@@ -22,6 +20,7 @@ if not os.path.exists(RESULTS_DIR):
     os.mkdir(RESULTS_DIR)
 
 from SIRNet import util, trainer
+from scripts import retrieve_data
 
 ########### ASSUMPTIONS ##############################
 ######################################################
@@ -37,7 +36,8 @@ paramdict['states'] = ['Texas']
 paramdict['counties'] = ['Bexar County']
 df = retrieve_data.get_data(paramdict)
 
-mobility = df[['Retail & recreation', 'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']]
+mobility = df[['Retail & recreation', 'Grocery & pharmacy', 'Parks',
+               'Transit stations', 'Workplace', 'Residential']]
 cases = df['Cases']
 day0 = df['date'][0]
 population = df['Population'][0]
@@ -49,8 +49,9 @@ county_name = 'Bexar'
 
 ###################### Formatting Data ######################
 #############################################################
-mobility = np.asarray(mobility).astype(np.float32)
-mobility[:, :6] = (1.0 + mobility[:, :6] / 100.0)  # convert percentages of change to fractions of activity
+mobility = np.asarray(mobility, dtype=np.float32)
+# convert percentages of change to fractions of activity
+mobility[:, :6] = (1.0 + mobility[:, :6] / 100.0)
 
 # Initial conditions
 i0 = float(cases[start_model-1]) / population / reporting_rate
@@ -76,7 +77,7 @@ Y = Y.reshape(Y.shape[0], 1, 1)  # time x batch x channels
 #####################################################
 weights_name = WEIGHTS_DIR + '/{}_weights.pt'.format(county_name)
 trainer = trainer.Trainer(weights_name)
-model = trainer.build_model(e0,i0)
+model = trainer.build_model(e0, i0)
 trainer.train(model, X, Y, 300)
 
 ################ Forecasting #######################
@@ -90,15 +91,16 @@ for case in cases:
     rX = torch.cat((X, rX), dim=0)
     sir_state, total_cases = model(rX)
     s = util.to_numpy(sir_state)
-    active[case] = s[:,0] * reporting_rate * population
-    total[case] = (s[:,0] + s[:,1]) * reporting_rate * population
+    active[case] = s[:, 0] * reporting_rate * population
+    total[case] = (s[:, 0] + s[:, 1]) * reporting_rate * population
 
 ############## Forecast Dates ####################
 ##################################################
 yy, mm, dd = day0.split('-')
-date0 = dt.datetime(int(yy),int(mm),int(dd))
+date0 = dt.datetime(int(yy), int(mm), int(dd))
 days = np.arange(rX.shape[0])
-dates = [date0 + dt.timedelta(days=int(d + delay_days + start_model)) for d in days]
+dates = [date0 + dt.timedelta(days=int(d + delay_days + start_model))
+         for d in days]
 
 ############### Reporting #########################
 ###################################################
@@ -107,9 +109,9 @@ timestamp = dt.datetime.now().strftime('%Y_%m_%d')
 for case in cases:
     M = np.max(active[case])
     idx = np.argmax(active[case])
-    print ('Case: {}%'.format(case))
-    print ('  Max value: {}'.format(M))
-    print ('  Day: {}, {}'.format(idx, dates[idx]))
+    print('Case: {}%'.format(case))
+    print('  Max value: {}'.format(M))
+    print('  Day: {}, {}'.format(idx, dates[idx]))
 
 ############### Plotting ##########################
 ###################################################
@@ -123,11 +125,12 @@ cl = {25: 'a', 50: 'b', 75: 'c', 100: 'd'}
 plt.rcParams.update({'font.size': 22})
 
 # Plot 1. Total Cases (Log)
+plt.figure(dpi=100, figsize=(16, 8))
 pidx = gt.shape[0] + 60  # write letter prediction at 60 days in the future
-plt.figure(dpi=100, figsize=(16,8))
 for case in total.keys():
-  plt.plot(dates, total[case], cs[case], linewidth=4.0, label='{}. {}% Mobility'.format(cl[case], case))
-  plt.text(dates[pidx],total[case][pidx],cl[case])
+    plt.plot(dates, total[case], cs[case], linewidth=4.0,
+             label='{}. {}% Mobility'.format(cl[case], case))
+    plt.text(dates[pidx], total[case][pidx], cl[case])
 plt.plot(dates[:Y.shape[0]], gt, 'ks', label='SAMHD Data')
 
 plt.title('Total Case Count')
@@ -139,15 +142,18 @@ plt.show()
 
 # Plots 2 & 3. Active Cases (zoomed out and zoomed in)
 for zoom in [True, False]:
-  plt.figure(dpi=100, figsize=(16,8))
-  for case in total.keys():
-    plt.plot(dates, active[case], cs[case],linewidth=4.0, label='{}. {}% Mobility'.format(cl[case], case))
-    pidx = gt.shape[0]+10 if zoom else np.argmax(active[case])  # write at 10 days or peak
-    plt.text(dates[pidx],active[case][pidx],cl[case])
+    plt.figure(dpi=100, figsize=(16, 8))
+    for case in total.keys():
+        plt.plot(dates, active[case], cs[case], linewidth=4.0,
+                 label='{}. {}% Mobility'.format(cl[case], case))
+        pidx = (gt.shape[0] + 10 if zoom else
+                np.argmax(active[case]))  # write at 10 days or peak
+        plt.text(dates[pidx], active[case][pidx], cl[case])
 
-  plt.title('Active (Infectious) Case Count')
-  plt.ylabel('Count')
-  if zoom: plt.ylim((0, gt[-1]))
-  util.plt_setup()
-  plt.savefig(RESULTS_DIR + '/{}_Active_Cases{}.pdf'.format(timestamp, zoom))
-  plt.show()
+    plt.title('Active (Infectious) Case Count')
+    plt.ylabel('Count')
+    if zoom:
+        plt.ylim((0, gt[-1]))
+    util.plt_setup()
+    plt.savefig(RESULTS_DIR + '/{}_Active_Cases{}.pdf'.format(timestamp, zoom))
+    plt.show()
