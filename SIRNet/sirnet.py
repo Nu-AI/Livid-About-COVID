@@ -35,6 +35,8 @@ class SIRNetBase(ABC, torch.nn.Module):
         # et al]
         self.k = Parameter(torch.tensor([[k]], dtype=torch.float32),
                            requires_grad=update_k)
+        self.sd = Parameter(torch.tensor([[0.5]], dtype=torch.float32),
+                           requires_grad=True)
         # b
         self.b_model = b_model.lower()
         self._make_b_model(**(b_kwargs or {}))
@@ -91,7 +93,7 @@ class SIRNetBase(ABC, torch.nn.Module):
             # b = torch.clamp(torch.exp(-self.i2b(xm)), 0)
             # Just look at norm of mobility- this is actually very good/
             # maybe more reliable.
-            b = self.q * torch.norm(xm) ** self.p
+            b = (1-torch.sigmoid(self.sd)*xt[0,5]) * self.q * torch.norm(xm) ** self.p
             # b = torch.relu(self.i2b(xm)) ** self.p  # Best method so far
         else:
             raise RuntimeError('b_model is invalid, this should not have '
