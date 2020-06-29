@@ -56,7 +56,7 @@ def load_data():
 
     mobility = df[MOBILITY_KEYS]
     cases = df['Cases']
-    day0 = df['date'][0]
+    day0 = df['date'][delay_days]
     population = df['Population'][0]
 
     # offset case data by delay days (treat it as though it was recorded earlier)
@@ -75,18 +75,20 @@ def load_data():
     if mask_modifier:
         mobility[mask_day:, 5] = 1.0
 
+    prev_cases = cases[start_model - (1 if start_model != 0 else 0)]
+
     # start with delay
     mobility = mobility[start_model:]
     cases = cases[start_model:]
 
-    return mobility, cases, day0, population
+    return mobility, cases, day0, population, prev_cases
 
 
 ## Cases ##
-mobility, cases, day0, population = load_data()
-
-MOB_SANITY = mobility.copy()
-CAS_SANITY = cases.copy()
+mobility, cases, day0, population, prev_cases = load_data()
+#
+# MOB_SANITY = mobility.copy()
+# CAS_SANITY = cases.copy()
 
 if county.lower().endswith(' county'):
     county_name = county[:-len(' county')]
@@ -98,14 +100,14 @@ totals = {}
 for reporting_rate in [0.05, 0.1, 0.3]:
 
     # Initial conditions
-    i0 = float(cases[start_model - 1]) / population / reporting_rate
+    i0 = float(prev_cases) / population / reporting_rate
     e0 = estimated_r0 * i0 / incubation_days
 
     # Split into input and output data
     X, Y = mobility, cases
 
-    assert (X == MOB_SANITY).all()
-    assert (Y == CAS_SANITY).all()
+    # assert (X == MOB_SANITY).all()
+    # assert (Y == CAS_SANITY).all()
 
     # divide out population of county, reporting rate
     Y = (Y / population) / reporting_rate
@@ -152,8 +154,7 @@ for reporting_rate in [0.05, 0.1, 0.3]:
     yy, mm, dd = day0.split('-')
     date0 = dt.datetime(int(yy), int(mm), int(dd))
     days = np.arange(rX.shape[0])
-    dates = [date0 + dt.timedelta(days=int(d + delay_days + start_model)) for d
-             in days]
+    dates = [date0 + dt.timedelta(days=int(d)) for d in days]
 
     ############### Reporting #########################
     ###################################################
@@ -168,6 +169,7 @@ for reporting_rate in [0.05, 0.1, 0.3]:
 
 ############### Plotting ##########################
 ###################################################
+# TODO: line is weird...
 gt = np.squeeze(Y.numpy()) * reporting_rate * population
 
 # plot styles & plot letters
