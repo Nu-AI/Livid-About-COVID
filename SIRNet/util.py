@@ -5,17 +5,19 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 
-def to_numpy(tensor, squeeze=True):
+def to_numpy(tensor, squeeze=True, warn=True):
     """Converts a PyTorch Tensor to a NumPy array.
 
     :param tensor: A PyTorch tensor object (note this still works for Variables
         which are deprecated)
     :param squeeze: Whether to squeeze tensor (default: True)
+    :param warn: Whether to give a warning if input already is NumPy
     :return: PyTorch tensor as a NumPy array
     """
     if isinstance(tensor, np.ndarray):
-        warnings.warn('to_numpy was passed tensor, but it is already a NumPy '
-                      'ndarray. Continuing..')
+        if warn:
+            warnings.warn('to_numpy was passed tensor, but it is already a '
+                          'NumPy ndarray. Continuing..')
         t_npy = tensor
     else:
         t_npy = tensor.cpu().detach().numpy()

@@ -1,4 +1,5 @@
 import os
+from os.path import join as pjoin
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
@@ -56,8 +57,13 @@ def load_data():
 
     mobility = df[MOBILITY_KEYS]
     cases = df['Cases']
-    day0 = df['date'][delay_days]
-    population = df['Population'][0]
+    population = df['Population'][0]  # All values the same
+
+    total_delay = delay_days + start_model
+    day0 = df['date'][total_delay]
+
+    # The previous number of cases after model delays
+    prev_cases = cases[total_delay - (1 if total_delay > 0 else 0)]
 
     # offset case data by delay days (treat it as though it was recorded earlier)
     cases = np.array(cases[delay_days:])
@@ -75,8 +81,6 @@ def load_data():
     if mask_modifier:
         mobility[mask_day:, 5] = 1.0
 
-    prev_cases = cases[start_model - (1 if start_model != 0 else 0)]
-
     # start with delay
     mobility = mobility[start_model:]
     cases = cases[start_model:]
@@ -86,17 +90,23 @@ def load_data():
 
 ## Cases ##
 mobility, cases, day0, population, prev_cases = load_data()
-#
-# MOB_SANITY = mobility.copy()
-# CAS_SANITY = cases.copy()
 
 if county.lower().endswith(' county'):
     county_name = county[:-len(' county')]
 else:
     county_name = county
 
+# timestamp = dt.datetime.now().strftime('%Y_%m_%d')
+timestamp = dt.datetime.now().strftime('%Y_%m_%d_%H_%M')
+
 actives = {}
 totals = {}
+
+# TODO: if weights_dir provided...
+weights_dir_base = pjoin(WEIGHTS_DIR, timestamp)
+if not os.path.exists(weights_dir_base):
+    os.mkdir(weights_dir_base)
+
 for reporting_rate in [0.05, 0.1, 0.3]:
 
     # Initial conditions
@@ -105,9 +115,6 @@ for reporting_rate in [0.05, 0.1, 0.3]:
 
     # Split into input and output data
     X, Y = mobility, cases
-
-    # assert (X == MOB_SANITY).all()
-    # assert (Y == CAS_SANITY).all()
 
     # divide out population of county, reporting rate
     Y = (Y / population) / reporting_rate
@@ -122,10 +129,10 @@ for reporting_rate in [0.05, 0.1, 0.3]:
 
     #################### Training #######################
     #####################################################
-    # weights_name = WEIGHTS_DIR + '/{}_report{}_weights.pt'.format(
-    #     county_name, reporting_rate)
-    weights_name = WEIGHTS_DIR + '/{}_weights.pt'.format(
-        county_name)
+    # TODO: if weights_dir provided...
+    # weights_name = pjoin(weights_dir_base, '{}_report{}_weights.pt'.format(
+    #     county_name, reporting_rate))
+    weights_name = pjoin(weights_dir_base, '{}_weights.pt'.format(county_name))
     trnr = trainer.Trainer(weights_name)
     model = trnr.build_model(e0, i0)
     trnr.train(model, X, Y, iters=n_epochs, step_size=lr_step_size)
@@ -159,7 +166,6 @@ for reporting_rate in [0.05, 0.1, 0.3]:
     ############### Reporting #########################
     ###################################################
     print('\n#########################################\n\n')
-    timestamp = dt.datetime.now().strftime('%Y_%m_%d')
     for case in mob_pct_cases:
         M = np.max(active[case])
         idx = np.argmax(active[case])
@@ -169,14 +175,12 @@ for reporting_rate in [0.05, 0.1, 0.3]:
 
 ############### Plotting ##########################
 ###################################################
-# TODO: line is weird...
-gt = np.squeeze(Y.numpy()) * reporting_rate * population
+gt = np.squeeze(cases)
 
 # plot styles & plot letters
 cs = {25: 'b-', 50: 'g--', 75: 'y-.', 100: 'r:'}
 cl = {25: 'a', 50: 'b', 75: 'c', 100: 'd'}
 
-# Default text size
 plt.rcParams.update({'font.size': 22})
 
 # Plot 1. Total Cases (Log)

@@ -38,11 +38,10 @@ class Trainer(object):
             output = loss.forward(torch.log(fx), torch.log(y))
         else:
             output = loss.forward(fx, y)
+
         output.backward()
         optimizer.step()
-        # for name, param in model.named_parameters():
-        #  if name == "SEIRNet.i2b.weight":
-        #     param.data.clamp_(1e-2)
+
         return output.data.item()
 
     def train(self, model, X, Y, iters, step_size=4000):
@@ -55,21 +54,18 @@ class Trainer(object):
         torch.autograd.set_detect_anomaly(True)
 
         for i in range(iters):
-            iterator = zip([X], [Y])
-            for X, Y in iterator:
-                batch_size = Y.shape[0]
-                cost = 0.
-                num_batches = math.ceil(len(X) / batch_size)
-                for k in range(num_batches):
-                    start, end = k * batch_size, (k + 1) * batch_size
-                    cost += self.iteration(model, loss, optimizer, X[start:end],
-                                           Y[start:end])
-                if (i + 1) % 50 == 0:
-                    print('\nEpoch = %d, cost = %s' %
-                          (i + 1, cost / num_batches))
-                    print('The model fit is: ')
-                    for name, param in model.named_parameters():
-                        print(name, param.data)
+            batch_size = Y.shape[0]  # TODO
+            cost = 0.
+            num_batches = math.ceil(len(X) / batch_size)
+            for k in range(num_batches):
+                start, end = k * batch_size, (k + 1) * batch_size
+                cost += self.iteration(model, loss, optimizer, X[start:end],
+                                       Y[start:end])
+            if (i + 1) % 50 == 0:
+                print('\nEpoch = %d, cost = %s' % (i + 1, cost / num_batches))
+                print('The model fit is: ')
+                for name, param in model.named_parameters():
+                    print('   ', name, param.data)
             # TODO: scheduler may restart learning rate if trying to load from
             #  file. Mitigation: store epoch number in filename
             scheduler.step()
