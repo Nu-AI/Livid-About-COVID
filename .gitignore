@@ -1,4 +1,5 @@
 Hospitals-By-Beds.csv
+Dashboard/GEOJSONs/
 
 # Generated weights
 *.pt
@@ -132,6 +133,7 @@ celerybeat.pid
 .venv
 env/
 venv/
+venv_*/
 ENV/
 env.bak/
 venv.bak/
