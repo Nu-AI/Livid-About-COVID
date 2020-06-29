@@ -24,29 +24,37 @@ from scripts import retrieve_data
 
 ########### ASSUMPTIONS ##############################
 ######################################################
+country = 'United States'
+state = 'Texas'
+county = 'Bexar County'
 # @formatter:off
 reporting_rate = 0.1     # Portion of cases that are actually detected
 delay_days = 10          # Days between becoming infected / positive confirmation (due to incubation period / testing latency
 start_model = 23         # The day where we begin our fit
 mask_modifier = False    #
 mask_day = 65            # Day of mask order
+incubation_days = 5      # 5 day incubation period [Backer et al]
+estimated_r0 = 2.2       # 2.2 R0 estimated in literature
+n_epochs = 200           # number of training epochs
+lr_step_size = 4000      # learning rate decay step size
+mob_pct_cases = [25, 50, 75, 100]
 # @formatter:on
 
-## Cases ##
-actives = {}
-totals = {}
-for reporting_rate in [0.05, 0.1, 0.3]:
+MOBILITY_KEYS = ['Retail & recreation', 'Grocery & pharmacy', 'Parks',
+                 'Transit stations', 'Workplace', 'Residential']
 
+
+def load_data():
     ############## Simplified Data ####################
     ###################################################
-    paramdict = {}
-    paramdict['country'] = 'United States'
-    paramdict['states'] = ['Texas']
-    paramdict['counties'] = ['Bexar County']
+    paramdict = {
+        'country': country,
+        'states': [state],
+        'counties': [county]
+    }
     df = retrieve_data.get_data(paramdict)
 
-    mobility = df[['Retail & recreation', 'Grocery & pharmacy', 'Parks',
-                   'Transit stations', 'Workplace', 'Residential']]
+    mobility = df[MOBILITY_KEYS]
     cases = df['Cases']
     day0 = df['date'][0]
     population = df['Population'][0]
@@ -54,7 +62,6 @@ for reporting_rate in [0.05, 0.1, 0.3]:
     # offset case data by delay days (treat it as though it was recorded earlier)
     cases = np.array(cases[delay_days:])
     mobility = np.array(mobility[:-delay_days])
-    county_name = 'Bexar'
 
     ###################### Formatting Data ######################
     #############################################################
@@ -68,14 +75,37 @@ for reporting_rate in [0.05, 0.1, 0.3]:
     if mask_modifier:
         mobility[mask_day:, 5] = 1.0
 
+    # start with delay
+    mobility = mobility[start_model:]
+    cases = cases[start_model:]
+
+    return mobility, cases, day0, population
+
+
+## Cases ##
+mobility, cases, day0, population = load_data()
+
+MOB_SANITY = mobility.copy()
+CAS_SANITY = cases.copy()
+
+if county.lower().endswith(' county'):
+    county_name = county[:-len(' county')]
+else:
+    county_name = county
+
+actives = {}
+totals = {}
+for reporting_rate in [0.05, 0.1, 0.3]:
+
     # Initial conditions
     i0 = float(cases[start_model - 1]) / population / reporting_rate
-    e0 = 2.2 * i0 / 5.0
-    mobility = mobility[start_model:]  # start with delay
-    cases = cases[start_model:]  # delay days
+    e0 = estimated_r0 * i0 / incubation_days
 
     # Split into input and output data
     X, Y = mobility, cases
+
+    assert (X == MOB_SANITY).all()
+    assert (Y == CAS_SANITY).all()
 
     # divide out population of county, reporting rate
     Y = (Y / population) / reporting_rate
@@ -90,17 +120,20 @@ for reporting_rate in [0.05, 0.1, 0.3]:
 
     #################### Training #######################
     #####################################################
-    weights_name = WEIGHTS_DIR + '/{}_weights.pt'.format(county_name)
+    # weights_name = WEIGHTS_DIR + '/{}_report{}_weights.pt'.format(
+    #     county_name, reporting_rate)
+    weights_name = WEIGHTS_DIR + '/{}_weights.pt'.format(
+        county_name)
     trnr = trainer.Trainer(weights_name)
     model = trnr.build_model(e0, i0)
-    trnr.train(model, X, Y, 200)
+    trnr.train(model, X, Y, iters=n_epochs, step_size=lr_step_size)
 
     ################ Forecasting #######################
     ####################################################
     active = {}
     total = {}
-    cases = [25, 50, 75, 100]
-    for case in cases:
+
+    for case in mob_pct_cases:
         xN = torch.ones((1, 6), dtype=torch.float32) * case / 100
         xN[0, 5] = 0
         rX = xN.expand(200, *xN.shape)  # 200 x 1 x 6
@@ -126,7 +159,7 @@ for reporting_rate in [0.05, 0.1, 0.3]:
     ###################################################
     print('\n#########################################\n\n')
     timestamp = dt.datetime.now().strftime('%Y_%m_%d')
-    for case in cases:
+    for case in mob_pct_cases:
         M = np.max(active[case])
         idx = np.argmax(active[case])
         print('Case: {}%'.format(case))
