@@ -114,12 +114,8 @@ class data_retriever():
         filtering_func = lambda x,y: x.where(x['sub_region_2'].isin(y) == True).dropna().reset_index() if y== self.counties else \
                         x.where(x['sub_region_2'].isin(y) == True).dropna().reset_index()
         # Check if data is required for only the country
-        # if self.country is not None and self.states is None:
-        #     df_country = df[df['country_region']==self.country].dropna(how='all').reset_index()
         if self.country is not None and self.states is None:
-            # print("the country name {}".format(self.country), "\n", df['country_region'].unique().tolist())
-            df_country = df[
-                (df['country_region'] == self.country) & (df['sub_region_1'].isnull() == True)].reset_index()
+            df_country = df[df['country_region']==self.country].dropna(how='all').reset_index()
             # If want all the county data also
             if (self.counties is not None):
                 if ('all' not in self.counties):
@@ -584,25 +580,6 @@ def get_data(paramdict):
             df_required = df_required[
                 ['Index', 'fips', 'Country', 'State', 'County', 'date', 'Population', 'Cases', 'Deaths', 'Retail & recreation',
                  'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']].reset_index()
-
-    else:
-        df_required.rename(columns={
-            'index': 'Index',
-            'country_region': 'Country',
-            'sub_region_1': 'State',
-            'sub_region_2': 'County',
-            'date': 'date',
-            'retail_and_recreation_percent_change_from_baseline': 'Retail & recreation',
-            'grocery_and_pharmacy_percent_change_from_baseline': 'Grocery & pharmacy',
-            'parks_percent_change_from_baseline': 'Parks',
-            'transit_stations_percent_change_from_baseline': 'Transit stations',
-            'workplaces_percent_change_from_baseline': 'Workplace',
-            'residential_percent_change_from_baseline': 'Residential'}, inplace=True)
-        df_required = df_required[
-            ['Index', 'Country', 'State', 'County', 'date',
-             'Retail & recreation',
-             'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']].reset_index()
-
     df_required.to_csv("formatted_all_data.csv")
     print (df_required.head(200))
     return df_required
