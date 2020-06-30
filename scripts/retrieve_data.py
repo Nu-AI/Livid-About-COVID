@@ -21,8 +21,8 @@ pd.set_option('display.max_colwidth', -1)
 # If require data for only country or states, then set counties to None
 defaultParams={
     'country': 'United States',         # Can be only one country
-    'states' : ['New York'],               # Can enter either one or multiple states
-    'counties' : ['New York County'] # Can enter multiple or one county. If all counties are required, fill in ['all']
+    'states' : ['Texas'],               # Can enter either one or multiple states
+    'counties' : ['all'] # Can enter multiple or one county. If all counties are required, fill in ['all']
 }
 
 class data_retriever():
@@ -211,7 +211,7 @@ class data_retriever():
         return final_pop_df
 
     # Retrieve the temporal active cases and deaths information for counties
-     def get_cases_data(self, df_required):
+    def get_cases_data(self, df_required):
 
         state_cases_update = lambda state_cases_df : state_cases_df[state_cases_df['state'].isin(self.states) & (state_cases_df['date'].isin(df_required['date'].unique().tolist()))]
 
@@ -221,17 +221,44 @@ class data_retriever():
                 "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"))
             state_cases_df = state_cases_update(state_cases_df)
 
+            # Special Case for New York City
+            state_cases_df = state_cases_df.replace("New York City", "New York")
+            state_cases_df.loc[state_cases_df["county"]=="New York", 'fips'] = 36061
+
+            # temp_df = state_cases_df[state_cases_df["county"]=="New York"]
+            # fip_list = state_cases_df.loc[state_cases_df["county"]=="New York"]['fips'].values.tolist()
+            # new_fip_list = [36061]*len(fip_list)
+            # temp_df['fips'] = new_fip_list
+            # #state_cases_df[state_cases_df["county"]=="New York"]['fips'] = temp_df['fips']
+            # #print (temp_df)
+            # #state_cases_df.loc[state_cases_df["county"]=="New York"]['fips']].fillna(value=36061, inplace=True)
+
+            unique_counties = state_cases_df['county'].unique().tolist()
+            county_list = []
+            for county in unique_counties:
+                county_df = state_cases_df[state_cases_df['county']==county]
+                county_name = county + " County"
+                required_cdf = df_required[df_required['sub_region_2']==county_name]
+                county_df = county_df[county_df['date'].isin(required_cdf['date'].unique().tolist())]
+                county_list.append(county_df)
+            state_cases_df = pd.concat(county_list,sort=True)
+            #print (state_cases_df['county'].unique().tolist())
             # For all the counties in the state
             if 'all' in self.counties:
                 county_cases_df = state_cases_df.sort_values(by = ['county','date']).reset_index()
 
             # For selected counties in the state
             else:
-                new_counties = [county.split(" ")[0] for county in self.counties]
+                new_counties = [" ".join(county.split(" ")[:-1]) for county in self.counties]
+                #print (new_counties)
                 county_cases_df = state_cases_df[state_cases_df['county'].isin(new_counties)].sort_values(by=['county','date'])
 
-            county_cases_df=county_cases_df[['date', 'county', 'state', 'cases', 'deaths']]
-            #print (county_cases_df['county'].unique())
+            county_cases_df=county_cases_df[['fips', 'date', 'county', 'state', 'cases', 'deaths']]
+            print (county_cases_df['fips'].unique().tolist())
+            #print (county_cases_df)
+            #print(county_cases_df['date'])
+            #print (county_cases_df.head(80))
+
             return self.reorganize_case_data(df_required,county_cases_df)
 
         # If require only state data
@@ -242,7 +269,6 @@ class data_retriever():
             state_cases_df = state_cases_df[['date', 'state', 'cases', 'deaths']]
             return state_cases_df.sort_values(by=['state','date']).reset_index()
 
-
     # Reorganizing the data to match the mobility and population table
 
     def reorganize_case_data(self, df_required, df_county_cases):
@@ -250,23 +276,25 @@ class data_retriever():
         new_county_df = pd.DataFrame()
         new_temp_df = {}
         new_county_df_list = []
-        date_length =  len(df_required['date'].unique().tolist())
+        #date_length =  len(df_required['date'].unique().tolist())
         county_list = df_required['sub_region_2'].unique()
         all_case_counties = []
         new_counties = []
+
         # Get the list of the counties provided when
         if (self.counties is not None):
 
             # All the counties are required
             if 'all' in self.counties:
                 all_case_counties = list(df_county_cases['county'].unique())
+                #print (all_case_counties)
                 full_counties = list(df_required['sub_region_2'].unique())
-                print ("The all case counties {} \n {}".format(all_case_counties, len(all_case_counties)))
-                print ("The full counties {} \n {}".format(full_counties, len(full_counties)))
-
+                #print(full_counties)
+                all_case_counties = [i + " County" for i in all_case_counties]
                 if (len(all_case_counties) != len(full_counties)):
                     new_counties = full_counties
-                all_case_counties = [i + " County" for i in all_case_counties]
+                else:
+                    new_counties = all_case_counties
             # Specifically provided
             else:
                 all_case_counties = self.counties
@@ -277,13 +305,23 @@ class data_retriever():
 
         # Obtain the case data for the counties or states
         county_list = list(df_required['sub_region_2'].values)
-        print ("The new counties {} \n {}".format(new_counties, len(new_counties)))
+        #print(df_county_cases['fips'].unique().tolist())
         for county in new_counties:
             if self.counties is not None:
                 # Check if the case data for counties required are present in the case dataframe
-                if (county in all_case_counties):
-                    temp_df = df_county_cases[df_county_cases['county']==county.split(" ")[0]]
 
+                if (county in all_case_counties):
+                    temp_df = df_county_cases[df_county_cases['county']==' '.join(county.split(" ")[:-1])]
+                    #print (temp_df, " ".join(county.split(" ")[:-1]))
+                    county_name_list = list(temp_df['county'].values)
+                    #print (county_name_list)
+                    new_county_name_list = []
+                    for val in county_name_list:
+                        if "County" not in val:
+                            new_val = val+" County"
+                            new_county_name_list.append(new_val)
+                    temp_df['county'] = new_county_name_list
+                    #print (temp_df['fips'], " \n Condition 1", county)
                 # Fill the ones with no case data with zeros
                 else:
                     temp_df = df_required[df_required['sub_region_2']==county]
@@ -292,75 +330,51 @@ class data_retriever():
                     temp_df['cases'] = [0]*county_length
                     temp_df['deaths'] = [0]*county_length
                     temp_df['county'] = [county]*county_length
+                    temp_df['fips'] = [0]*county_length
                     temp_df['state'] = temp_df['sub_region_1'].tolist()
-                    temp_df = temp_df[['date','county','state','cases','deaths']]
+                    temp_df = temp_df[['fips','date','county','state','cases','deaths']]
+                    #print(temp_df['fips'], " \n Condition 2")
             # In the case of state data
             else:
-                temp_df = df_county_cases[df_county_cases['state']==county.split]
+                temp_df = df_county_cases[df_county_cases['state']==county.split(" ")[0]]
 
             length = county_list.count(county)
             # Extend the case list to map with the mobility and population data
             extend = lambda x,y: list(x[y].unique())*length
             # Create a dictionary for cases and deaths in the selected region
+            #print (temp_df)
             case_list = list(temp_df['cases'].values)
             death_list = list(temp_df['deaths'].values)
+            fips_list = list(temp_df['fips'].values)
+            print (temp_df.keys(),"\n",fips_list)
+            fips_val = fips_list[0]
             for _ in range(length-len(temp_df['cases'].tolist())):
                 case_list.insert(0,0)
                 death_list.insert(0,0)
+                fips_list.insert(0,fips_val)
 
-
-            if (len(temp_df['cases'].tolist()) < length):
+            if (len(temp_df['cases'].tolist())< length):
+                #print ("Entered this condition")
                 # Extend other columns in the table
                 new_temp_df['state'] = df_required.loc[df_required['sub_region_2']==county]['sub_region_1'].tolist()
                 if (self.counties is not None):
                     new_temp_df['county'] = df_required.loc[df_required['sub_region_2'] == county]['sub_region_2'].tolist()
 
                 # Fill in the dictionary
+                new_temp_df['fips'] = fips_list
                 new_temp_df['date'] = df_required.loc[df_required['sub_region_2']==county]['date'].tolist()
                 new_temp_df['cases'] = case_list
                 new_temp_df['deaths'] = death_list
+
                 new_county_df = pd.DataFrame.from_dict(new_temp_df)
 
                 # Append the dataframes
-                new_county_df_list.append(new_county_df)
-
-            elif (length < len(temp_df['cases'].tolist())):
-                # print("the length of the list {}".format(length))
-                # print("The length of the cases {}".format(len(temp_df['cases'].tolist())))
-                print ("This is for the county {}".format(county))
-                new_temp_df['state'] = df_required.loc[df_required['sub_region_2']==county]['sub_region_1'].tolist()
-                if (self.counties is not None):
-                    new_temp_df['county'] = df_required.loc[df_required['sub_region_2'] == county]['sub_region_2'].tolist()
-
-                # Fill in the dictionary
-                new_temp_df['date'] = df_required.loc[df_required['sub_region_2']==county]['date'].tolist()
-
-                dates = np.array(df_required.loc[df_required['sub_region_2']==county]['date'].tolist())
-                case_dates = np.array(temp_df['date'].tolist())
-                #actual_case_list = np.array(temp_df.loc[temp_df['date'].isin(dates)]['cases'].tolist())
-                actual_case_list = np.array(temp_df['cases'].tolist())
-                #actual_death_list = np.array(temp_df.loc[temp_df['date'].isin(dates)]['deaths'].tolist())
-                actual_death_list = np.array(temp_df['deaths'].tolist())
-                case_list = np.zeros_like(dates)
-                death_list = np.zeros_like(dates)
-                mask = np.in1d(dates,case_dates)
-                new_mask = np.in1d(case_dates,dates)
-                #print (new_mask.shape, mask.shape, actual_case_list.shape)
-                temp_list = actual_case_list[new_mask==True]
-                temp_list2= actual_death_list[new_mask==True]
-                case_list[mask==True] = temp_list
-                death_list[mask==True] = temp_list2
-                #print ("the dates are {} \n {}".format(dates, case_dates))
-                new_temp_df['cases'] = case_list
-                new_temp_df['deaths'] = death_list
-                new_county_df = pd.DataFrame.from_dict(new_temp_df)
-                #new_df = temp_df[temp_df['date'].isin(dates)]
-                #print ("the lenght of the new df {}".format(len(new_df)))
                 new_county_df_list.append(new_county_df)
             else:
                 new_county_df_list.append(temp_df)
 
         return pd.concat(new_county_df_list,sort=True)
+
 
 
     # Get the intervention setting dates for the different counties and states in USA
