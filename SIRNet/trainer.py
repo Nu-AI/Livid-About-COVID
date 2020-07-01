@@ -54,13 +54,13 @@ class Trainer(object):
         torch.autograd.set_detect_anomaly(True)
 
         for i in range(iters):
-            batch_size = Y.shape[0]  # TODO
+            batch_size = Y.shape[1]  # TODO
             cost = 0.
             num_batches = math.ceil(len(X) / batch_size)
             for k in range(num_batches):
                 start, end = k * batch_size, (k + 1) * batch_size
-                cost += self.iteration(model, loss, optimizer, X[start:end],
-                                       Y[start:end])
+                cost += self.iteration(model, loss, optimizer,
+                                       X[:, start:end], Y[:, start:end])
             if (i + 1) % 50 == 0:
                 print('\nEpoch = %d, cost = %s' % (i + 1, cost / num_batches))
                 print('The model fit is: ')

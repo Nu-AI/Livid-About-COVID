@@ -89,6 +89,7 @@ def load_data():
 
 
 ## Cases ##
+print('Loading data for {}, {}, {}...'.format(county, state, country))
 mobility, cases, day0, population, prev_cases = load_data()
 
 if county.lower().endswith(' county'):
@@ -96,7 +97,6 @@ if county.lower().endswith(' county'):
 else:
     county_name = county
 
-# timestamp = dt.datetime.now().strftime('%Y_%m_%d')
 timestamp = dt.datetime.now().strftime('%Y_%m_%d_%H_%M')
 
 actives = {}
@@ -108,6 +108,7 @@ if not os.path.exists(weights_dir_base):
     os.mkdir(weights_dir_base)
 
 for reporting_rate in [0.05, 0.1, 0.3]:
+    print('Begin for reporting rate {}'.format(reporting_rate))
 
     # Initial conditions
     i0 = float(prev_cases) / population / reporting_rate
@@ -129,16 +130,20 @@ for reporting_rate in [0.05, 0.1, 0.3]:
 
     #################### Training #######################
     #####################################################
+    print('Begin training...')
     # TODO: if weights_dir provided...
-    # weights_name = pjoin(weights_dir_base, '{}_report{}_weights.pt'.format(
-    #     county_name, reporting_rate))
-    weights_name = pjoin(weights_dir_base, '{}_weights.pt'.format(county_name))
+    weights_name = pjoin(weights_dir_base, '{}_report{}_weights.pt'.format(
+        county_name, reporting_rate))
+    # weights_name = pjoin(weights_dir_base, '{}_weights.pt'.format(county_name))
+
     trnr = trainer.Trainer(weights_name)
     model = trnr.build_model(e0, i0)
     trnr.train(model, X, Y, iters=n_epochs, step_size=lr_step_size)
+    print('Done training.')
 
     ################ Forecasting #######################
     ####################################################
+    print('Begin forecasting...')
     active = {}
     total = {}
 
@@ -175,6 +180,7 @@ for reporting_rate in [0.05, 0.1, 0.3]:
 
 ############### Plotting ##########################
 ###################################################
+print('Begin plotting...')
 gt = np.squeeze(cases)
 
 # plot styles & plot letters
