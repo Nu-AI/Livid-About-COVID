@@ -43,6 +43,9 @@ class data_retriever():
         add_cols = ['cases_total', 'deaths_total', 'DATE', 'country_name','census_fips_code', 'stats_population']
         required_keylist = required_keylist + add_cols
         new_df = df_country[required_keylist]
+        date_vals = df_country['DATE']
+        date_vals.apply(lambda x:x.strftime('%Y-%m-%d'))
+        new_df.DATE = date_vals
         redundant_cols = np.empty(len(new_df['DATE'].values.tolist()))
         new_df['State'] = redundant_cols.fill(np.NaN)
         new_df['County'] = redundant_cols.fill(np.NaN)
