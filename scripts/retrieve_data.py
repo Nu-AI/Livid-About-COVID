@@ -20,7 +20,7 @@ pd.set_option('display.max_colwidth', -1)
 # Setting the parameters for the data required.
 # If require data for only country or states, then set counties to None
 defaultParams={
-    'country': 'Spain',         # Can be only one country
+    'country': 'United States',         # Can be only one country
     'states' : None,               # Can enter either one or multiple states
     'counties' : None # Can enter multiple or one county. If all counties are required, fill in ['all']
 }
@@ -47,6 +47,7 @@ class data_retriever():
         new_df['State'] = redundant_cols.fill(np.NaN)
         new_df['County'] = redundant_cols.fill(np.NaN)
         return new_df
+
 
     def fill_missing_days_df(self, df_required):
         end_date = pd.to_datetime(df_required['date'][df_required.index[-1]])
@@ -159,8 +160,6 @@ class data_retriever():
                 #df_required = df_state.where(df_state['sub_region_2'].isin(self.counties)==True).dropna(how='all').reset_index()
 
             return df_required
-
-
 
     #Get the lookup table for getting population data
     @staticmethod
@@ -425,10 +424,14 @@ def get_data(paramdict):
     df_required = data.get_mobility_data()
     #print(data.fill_missing_days_df(df_required[df_required['sub_region_2'] == 'Ferry County']))
     #print(df_required)
+    country_flag = 0
     # The below case exists because of lack of data integration for countries other than USA
+    if (paramdict['country'] == 'United States'):
+        if(paramdict['states'] is not None or paramdict['counties'] is not None):
+            country_flag = 1
 
     # # TODO incorporate population metrics for other countries
-    if paramdict['country'] == 'United States' or paramdict['country'] is None:
+    if country_flag==1 or paramdict['country'] is None:
 
         # Get the poppulation data
         pop_df = data.get_population_data(df_required)
