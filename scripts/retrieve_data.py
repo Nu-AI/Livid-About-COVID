@@ -20,9 +20,9 @@ pd.set_option('display.max_colwidth', -1)
 # Setting the parameters for the data required.
 # If require data for only country or states, then set counties to None
 defaultParams = {
-    'country': 'United States',  # Can be only one country
-    'states': ['New York'],  # Can enter either one or multiple states
-    'counties': ['New York County']
+    'country': 'Spain',  # Can be only one country
+    'states': None,  # Can enter either one or multiple states
+    'counties': None
     # Can enter multiple or one county. If all counties are required, fill in ['all']
 }
 
@@ -35,6 +35,23 @@ class DataRetriever(object):
         self.counties = counties
 
     # Method to align the length of table for the mobility data to match the length of case data
+
+    def get_country_data(self):
+        df = pd.read_csv(
+            'https://raw.githubusercontent.com/rs-delve/covid19_datasets/master/dataset/combined_dataset_latest.csv',
+            parse_dates=['DATE'])
+        df_country = df[df['country_name'] == self.country].reset_index()
+        temp = df_country.keys()
+        required_keylist = list(
+            filter(lambda x: x.__contains__("mobility"), temp))
+        add_cols = ['cases_total', 'deaths_total', 'DATE', 'country_name',
+                    'census_fips_code', 'stats_population']
+        required_keylist = required_keylist + add_cols
+        new_df = df_country[required_keylist]
+        redundant_cols = np.empty(len(new_df['DATE'].values.tolist()))
+        new_df['State'] = redundant_cols.fill(np.NaN)
+        new_df['County'] = redundant_cols.fill(np.NaN)
+        return new_df
 
     def fill_missing_days_df(self, df_required):
         end_date = pd.to_datetime(df_required['date'][df_required.index[-1]])
@@ -627,10 +644,36 @@ def get_data(paramdict):
                 ['Index', 'fips', 'Country', 'State', 'County', 'date',
                  'Population', 'Cases', 'Deaths', 'Retail & recreation',
                  'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace',
-                 'Residential']
-            ].reset_index()
+                 'Residential']].reset_index()
+    else:
+        # In the case it is not United states, then loading from a new data source
+        data = DataRetriever(country=paramdict['country'],
+                             states=paramdict['states'],
+                             counties=paramdict['counties'])
+        df_required = data.get_country_data()
+        df_required.rename(columns={
+            'index': 'Index',
+            'cases_total': 'Cases',
+            'census_fips_code': 'fips',
+            'stats_population': 'Population',
+            'deaths_total': 'Deaths',
+            'country_name': 'Country',
+            'DATE': 'date',
+            'mobility_retail_recreation': 'Retail & recreation',
+            'mobility_grocery_pharmacy': 'Grocery & pharmacy',
+            'mobility_parks': 'Parks',
+            'mobility_transit_stations': 'Transit stations',
+            'mobility_workplaces': 'Workplace',
+            'mobility_residential': 'Residential', }, inplace=True)
+        df_required = df_required[
+            ['fips', 'Country', 'State', 'County', 'date', 'Population',
+             'Cases', 'Deaths',
+             'Retail & recreation',
+             'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace',
+             'Residential']].reset_index()
+
     df_required.to_csv("formatted_all_data.csv")
-    # print(df_required.head(200))
+    # print (df_required.head(20))
     return df_required
 
 
