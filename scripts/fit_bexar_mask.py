@@ -220,8 +220,8 @@ def pipeline(params):
     else:
         county_name = params.county
 
-    # TODO: if weights_dir provided...
-    weights_dir_base = pjoin(WEIGHTS_DIR, timestamp)
+    weights_dir_base = pjoin(
+        WEIGHTS_DIR, params.weights_dir if params.weights_dir else timestamp)
     if not os.path.exists(weights_dir_base):
         os.mkdir(weights_dir_base)
 
@@ -253,11 +253,10 @@ def pipeline(params):
 
         #################### Training #######################
         #####################################################
-        # TODO: if weights_dir provided...
-        # weights_name = pjoin(weights_dir_base, '{}_report{}_weights.pt'.format(
-        #     county_name, reporting_rate))
-        weights_name = pjoin(weights_dir_base, '{}_weights.pt'.format(
-            county_name))
+        weights_name = pjoin(weights_dir_base, '{}_report{}_weights.pt'.format(
+            county_name, reporting_rate))  # TODO this does not fit properly...
+        # weights_name = pjoin(weights_dir_base, '{}_weights.pt'.format(
+        #     county_name))
 
         model = model_and_fit(weights_name, X, Y, scale_factor, prev_cases,
                               params)
@@ -284,6 +283,9 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
+    parser.add_argument('--weights-dir', default=None,
+                        help='Optional directory to load old weight or store '
+                             'newly trained ones.')
     parser.add_argument('--country', default='United States',
                         help='The country to look for state and county in data '
                              'loading')
