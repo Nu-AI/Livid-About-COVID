@@ -26,7 +26,7 @@ from scripts import retrieve_data
 ######################################################
 reporting_rate = 0.1     # Portion of cases that are actually detected
 delay_days = 10          # Days between becoming infected / positive confirmation (due to incubation period / testing latency
-start_model = 23         # The day where we begin our fit
+start_model = 23         # The day where we begin our model_and_fit
 
 ############## Simplified Data ####################
 ###################################################

@@ -1,10 +1,11 @@
+import sys
+import datetime as dt
 import os
 from os.path import join as pjoin
-import sys
+
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-import datetime as dt
 
 ############### Paths ##############################
 ####################################################
@@ -25,33 +26,36 @@ from scripts import retrieve_data
 
 ########### ASSUMPTIONS ##############################
 ######################################################
-country = 'United States'
-state = 'Texas'
-county = 'Bexar County'
-# @formatter:off
-reporting_rate = 0.1     # Portion of cases that are actually detected
-delay_days = 10          # Days between becoming infected / positive confirmation (due to incubation period / testing latency
-start_model = 23         # The day where we begin our fit
-mask_modifier = False    #
-mask_day = 65            # Day of mask order
-incubation_days = 5      # 5 day incubation period [Backer et al]
-estimated_r0 = 2.2       # 2.2 R0 estimated in literature
-n_epochs = 200           # number of training epochs
-lr_step_size = 4000      # learning rate decay step size
-mob_pct_cases = [25, 50, 75, 100]
+# country = 'United States'
+# state = 'Texas'
+# county = 'Bexar County'
+# # @formatter:off
+# delay_days = 10          # Days between becoming infected / positive confirmation (due to incubation period / testing latency
+# start_model = 23         # The day where we begin our model_and_fit
+# mask_modifier = False    #
+# mask_day = 65            # Day of mask order
+# incubation_days = 5      # 5 day incubation period [Backer et al]
+# estimated_r0 = 2.2       # 2.2 R0 estimated in literature
+# n_epochs = 200           # number of training epochs
+# lr_step_size = 4000      # learning rate decay step size
+# forecast_days = 200      # number of days to forecast
+# reporting_rates = [0.05, 0.1, 0.3]     # Portion of cases that are actually detected
+# mobility_cases = [25, 50, 75, 100]
 # @formatter:on
 
 MOBILITY_KEYS = ['Retail & recreation', 'Grocery & pharmacy', 'Parks',
                  'Transit stations', 'Workplace', 'Residential']
 
+timestamp = dt.datetime.now().strftime('%Y_%m_%d_%H_%M')
 
-def load_data():
+
+def load_data(params):
     ############## Simplified Data ####################
     ###################################################
     paramdict = {
-        'country': country,
-        'states': [state],
-        'counties': [county]
+        'country': params.country,
+        'states': [params.state],
+        'counties': [params.county]
     }
     df = retrieve_data.get_data(paramdict)
 
@@ -59,183 +63,266 @@ def load_data():
     cases = df['Cases']
     population = df['Population'][0]  # All values the same
 
-    total_delay = delay_days + start_model
+    total_delay = params.delay_days + params.start_model
     day0 = df['date'][total_delay]
 
     # The previous number of cases after model delays
     prev_cases = cases[total_delay - (1 if total_delay > 0 else 0)]
 
-    # offset case data by delay days (treat it as though it was recorded earlier)
-    cases = np.array(cases[delay_days:])
-    mobility = np.array(mobility[:-delay_days])
+    # offset case data by delay days (treat it as though it was recorded
+    # earlier)
+    cases = np.array(cases[params.delay_days:])
+    mobility = np.array(mobility[:-params.delay_days])
 
     ###################### Formatting Data ######################
     #############################################################
-    mobility[-1][-1] = 17.0
+    mobility[-1][-1] = 17.0  # TODO what is this
     mobility = np.asarray(mobility).astype(np.float32)
     # convert percentages of change to fractions of activity
     mobility[:, :6] = 1.0 + mobility[:, :6] / 100.0
 
     # Turn the last column into 1-hot social-distancing enforcement
     mobility[:, 5] = 0
-    if mask_modifier:
-        mobility[mask_day:, 5] = 1.0
+    if params.mask_modifier:
+        mobility[params.mask_day:, 5] = 1.0
 
     # start with delay
-    mobility = mobility[start_model:]
-    cases = cases[start_model:]
+    mobility = mobility[params.start_model:]
+    cases = cases[params.start_model:]
 
     return mobility, cases, day0, population, prev_cases
 
 
-## Cases ##
-print('Loading data for {}, {}, {}...'.format(county, state, country))
-mobility, cases, day0, population, prev_cases = load_data()
-
-if county.lower().endswith(' county'):
-    county_name = county[:-len(' county')]
-else:
-    county_name = county
-
-timestamp = dt.datetime.now().strftime('%Y_%m_%d_%H_%M')
-
-actives = {}
-totals = {}
-
-# TODO: if weights_dir provided...
-weights_dir_base = pjoin(WEIGHTS_DIR, timestamp)
-if not os.path.exists(weights_dir_base):
-    os.mkdir(weights_dir_base)
-
-for reporting_rate in [0.05, 0.1, 0.3]:
-    print('Begin for reporting rate {}'.format(reporting_rate))
-
+def model_and_fit(weights_name, X, Y, scale_factor, prev_cases, params):
     # Initial conditions
-    i0 = float(prev_cases) / population / reporting_rate
-    e0 = estimated_r0 * i0 / incubation_days
-
-    # Split into input and output data
-    X, Y = mobility, cases
-
-    # divide out population of county, reporting rate
-    Y = (Y / population) / reporting_rate
-
-    # To Torch on device
-    X = torch.from_numpy(X.astype(np.float32))
-    Y = torch.from_numpy(Y.astype(np.float32))
-
-    # Add batch dimension
-    X = X.reshape(X.shape[0], 1, X.shape[1])  # time x batch x channels
-    Y = Y.reshape(Y.shape[0], 1, 1)  # time x batch x channels
-
-    #################### Training #######################
-    #####################################################
-    print('Begin training...')
-    # TODO: if weights_dir provided...
-    weights_name = pjoin(weights_dir_base, '{}_report{}_weights.pt'.format(
-        county_name, reporting_rate))
-    # weights_name = pjoin(weights_dir_base, '{}_weights.pt'.format(county_name))
+    i0 = float(prev_cases) / scale_factor
+    e0 = params.estimated_r0 * i0 / params.incubation_days
 
     trnr = trainer.Trainer(weights_name)
     model = trnr.build_model(e0, i0)
-    trnr.train(model, X, Y, iters=n_epochs, step_size=lr_step_size)
-    print('Done training.')
+    trnr.train(model, X, Y,
+               iters=params.n_epochs, step_size=params.lr_step_size)
 
+    return model
+
+
+def forecast(X, model, dates, scale_factor, params):
     ################ Forecasting #######################
     ####################################################
     print('Begin forecasting...')
     active = {}
     total = {}
 
-    for case in mob_pct_cases:
+    for case in params.mobility_cases:
         xN = torch.ones((1, 6), dtype=torch.float32) * case / 100
         xN[0, 5] = 0
-        rX = xN.expand(200, *xN.shape)  # 200 x 1 x 6
+        rX = xN.expand(params.forecast_days, *xN.shape)  # days x 1 x 6
         rX = torch.cat((X, rX), dim=0)
-        if mask_modifier:
-            rX[mask_day:, 0, 5] = 1.0
+        if params.mask_modifier:
+            rX[params.mask_day:, 0, 5] = 1.0
         sir_state, total_cases = model(rX)
         s = util.to_numpy(sir_state)
-        active[case] = s[:, 0] * reporting_rate * population
-        total[case] = (s[:, 0] + s[:, 1]) * reporting_rate * population
-    actives[reporting_rate] = active
-    totals[reporting_rate] = total
-
-    ############## Forecast Dates ####################
-    ##################################################
-    yy, mm, dd = day0.split('-')
-    date0 = dt.datetime(int(yy), int(mm), int(dd))
-    days = np.arange(rX.shape[0])
-    dates = [date0 + dt.timedelta(days=int(d)) for d in days]
+        active[case] = s[:, 0] * scale_factor
+        total[case] = (s[:, 0] + s[:, 1]) * scale_factor
 
     ############### Reporting #########################
     ###################################################
     print('\n#########################################\n\n')
-    for case in mob_pct_cases:
+    for case in params.mobility_cases:
         M = np.max(active[case])
         idx = np.argmax(active[case])
         print('Case: {}%'.format(case))
         print('  Max value: {}'.format(M))
         print('  Day: {}, {}'.format(idx, dates[idx]))
 
-############### Plotting ##########################
-###################################################
-print('Begin plotting...')
-gt = np.squeeze(cases)
+    return active, total, dates
 
-# plot styles & plot letters
-cs = {25: 'b-', 50: 'g--', 75: 'y-.', 100: 'r:'}
-cl = {25: 'a', 50: 'b', 75: 'c', 100: 'd'}
 
-plt.rcParams.update({'font.size': 22})
+def plot(cases, actives, totals, dates, params):
+    gt = np.squeeze(cases)
 
-# Plot 1. Total Cases (Log)
-pidx = gt.shape[0] + 60  # write letter prediction at 60 days in the future
-plt.figure(dpi=100, figsize=(16, 8))
-for case in total.keys():
-    plt.plot(dates, totals[.1][case], cs[case], linewidth=4.0,
-             label='{}. {}% Mobility'.format(cl[case], case))
-    # plt.fill_between(dates, totals[.05][case], totals[.30][case],
-    #                  color=cs[case][0], alpha=.1)
-    plt.fill_between(dates, totals[.05][case], totals[.1][case],
-                     color=cs[case][0], alpha=.1)
-    plt.fill_between(dates, totals[.1][case], totals[.30][case],
-                     color=cs[case][0], alpha=.1)
-    plt.text(dates[pidx], totals[.1][case][pidx], cl[case])
-plt.plot(dates[:Y.shape[0]], gt, 'ks', label='SAMHD Data')
+    # plot styles & plot letters
+    cs = {25: 'b-', 50: 'g--', 75: 'y-.', 100: 'r:'}
+    cl = {25: 'a', 50: 'b', 75: 'c', 100: 'd'}
 
-plt.title('Total Case Count')
-plt.ylabel('Count')
-plt.yscale('log')
-util.plt_setup()
-plt.savefig(RESULTS_DIR + '/{}_Total_Cases.pdf'.format(timestamp))
-plt.show()
+    plt.rcParams.update({'font.size': 22})
 
-# Plots 2 & 3. Active Cases (zoomed out and zoomed in)
-for zoom in [True, False]:
+    # Plot 1. Total Cases (Log)
+    pidx = gt.shape[0] + 60  # write letter prediction at 60 days in the future
     plt.figure(dpi=100, figsize=(16, 8))
-    for case in total.keys():
-        plt.plot(dates, actives[.1][case], cs[case], linewidth=4.0,
+    for case in params.mobility_cases:
+        plt.plot(dates, totals[.1][case], cs[case], linewidth=4.0,
                  label='{}. {}% Mobility'.format(cl[case], case))
-        # plt.fill_between(dates, actives[.05][case], actives[.30][case],
+        # plt.fill_between(dates, totals[.05][case], totals[.30][case],
         #                  color=cs[case][0], alpha=.1)
-        plt.fill_between(dates, actives[.05][case], actives[.1][case],
+        plt.fill_between(dates, totals[.05][case], totals[.1][case],
                          color=cs[case][0], alpha=.1)
-        plt.fill_between(dates, actives[.1][case], actives[.30][case],
+        plt.fill_between(dates, totals[.1][case], totals[.30][case],
                          color=cs[case][0], alpha=.1)
-        pidx = (gt.shape[0] + 10 if zoom else
-                np.argmax(actives[.1][case]))  # write at 10 days or peak
-        if case == 50:
-            pidx += 5
-        if zoom:
-            plt.text(dates[pidx], min(actives[.1][case][pidx], 1400), cl[case])
-        else:
-            plt.text(dates[pidx], actives[.1][case][pidx], cl[case])
+        plt.text(dates[pidx], totals[.1][case][pidx], cl[case])
+    plt.plot(dates[:gt.shape[0]], gt, 'ks', label='SAMHD Data')
 
-    plt.title('Active (Infectious) Case Count')
+    plt.title('Total Case Count')
     plt.ylabel('Count')
-    if zoom:
-        plt.ylim((0, gt[-1]))
+    plt.yscale('log')
     util.plt_setup()
-    plt.savefig(RESULTS_DIR + '/{}_Active_Cases{}.pdf'.format(timestamp, zoom))
+    plt.savefig(RESULTS_DIR + '/{}_Total_Cases.pdf'.format(timestamp))
     plt.show()
+
+    # Plots 2 & 3. Active Cases (zoomed out and zoomed in)
+    for zoom in [True, False]:
+        plt.figure(dpi=100, figsize=(16, 8))
+        for case in params.mobility_cases:
+            plt.plot(dates, actives[.1][case], cs[case], linewidth=4.0,
+                     label='{}. {}% Mobility'.format(cl[case], case))
+            # plt.fill_between(dates, actives[.05][case], actives[.30][case],
+            #                  color=cs[case][0], alpha=.1)
+            plt.fill_between(dates,
+                             actives[.05][case],
+                             actives[.1][case],
+                             color=cs[case][0], alpha=.1)
+            plt.fill_between(dates,
+                             actives[.1][case],
+                             actives[.30][case],
+                             color=cs[case][0], alpha=.1)
+            pidx = (gt.shape[0] + 10 if zoom else
+                    np.argmax(actives[.1][case]))  # write at 10 days or peak
+            if case == 50:
+                pidx += 5
+            if zoom:
+                plt.text(dates[pidx],
+                         min(actives[.1][case][pidx], 1400),
+                         cl[case])
+            else:
+                plt.text(dates[pidx],
+                         actives[.1][case][pidx],
+                         cl[case])
+
+        plt.title('Active (Infectious) Case Count')
+        plt.ylabel('Count')
+        if zoom:
+            plt.ylim((0, gt[-1]))
+        util.plt_setup()
+        plt.savefig(RESULTS_DIR + '/{}_Active_Cases{}.pdf'.format(
+            timestamp, zoom))
+        plt.show()
+
+
+def pipeline(params):
+    ## Cases ##
+    print('Loading data for {}, {}, {}...'.format(
+        params.county, params.state, params.country))
+
+    mobility, cases, day0, population, prev_cases = load_data(params)
+
+    if params.county.lower().endswith(' county'):
+        county_name = params.county[:-len(' county')]
+    else:
+        county_name = params.county
+
+    # TODO: if weights_dir provided...
+    weights_dir_base = pjoin(WEIGHTS_DIR, timestamp)
+    if not os.path.exists(weights_dir_base):
+        os.mkdir(weights_dir_base)
+
+    actives = {}
+    totals = {}
+
+    # Dates used in forecasting
+    yy, mm, dd = day0.split('-')
+    date0 = dt.datetime(int(yy), int(mm), int(dd))
+    days = np.arange(mobility.shape[0] + params.forecast_days)
+    dates = [date0 + dt.timedelta(days=int(d)) for d in days]
+
+    for reporting_rate in params.reporting_rates:
+        print('Begin pipeline with reporting rate {}'.format(reporting_rate))
+
+        # Split into input and output data
+        X, Y = mobility, cases
+        # divide out population of county, reporting rate
+        scale_factor = population * reporting_rate
+        Y = Y / scale_factor
+
+        # To Torch on device
+        X = torch.from_numpy(X.astype(np.float32))
+        Y = torch.from_numpy(Y.astype(np.float32))
+
+        # Add batch dimension
+        X = X.reshape(X.shape[0], 1, X.shape[1])  # time x batch x channels
+        Y = Y.reshape(Y.shape[0], 1, 1)  # time x batch x channels
+
+        #################### Training #######################
+        #####################################################
+        # TODO: if weights_dir provided...
+        # weights_name = pjoin(weights_dir_base, '{}_report{}_weights.pt'.format(
+        #     county_name, reporting_rate))
+        weights_name = pjoin(weights_dir_base, '{}_weights.pt'.format(
+            county_name))
+
+        model = model_and_fit(weights_name, X, Y, scale_factor, prev_cases,
+                              params)
+        print('Done training.')
+
+        ################ Forecasting #######################
+        ####################################################
+        active, total, dates = forecast(X, model, dates, scale_factor, params)
+        actives[reporting_rate] = active
+        totals[reporting_rate] = total
+
+    ############### Plotting ##########################
+    ###################################################
+    print('Begin plotting...')
+    plot(cases, actives, totals, dates, params)
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(  # noqa
+        description='Unified interface to SIRNet training, evaluation, and '
+                    'forecasting.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
+    parser.add_argument('--country', default='United States',
+                        help='The country to look for state and county in data '
+                             'loading')
+    parser.add_argument('--state', default='Texas',
+                        help='The state to look for county in data loading')
+    parser.add_argument('--county', default='Bexar County',
+                        help='The county used in data loading')
+    parser.add_argument('--forecast-days', default=200, type=int,
+                        help='Number of days to forecast')
+    parser.add_argument('--reporting-rates', default=[0.05, 0.1, 0.3],
+                        type=float, nargs='+',
+                        help='Portion of cases that are actually detected. '
+                             'Multiple space-separated values can be passed in '
+                             'here.')
+    parser.add_argument('--mobility-cases', default=[25, 50, 75, 100],
+                        type=float, nargs='+',
+                        help='Percentage of mobility assumed in forecasts. '
+                             'Multiple space-separated values can be passed in '
+                             'here.')
+    parser.add_argument('--n-epochs', default=200, type=int,
+                        help='Number of training epochs')
+    parser.add_argument('--lr-step-size', default=4000, type=int,
+                        help='Learning rate decay step size')
+    parser.add_argument('--delay-days', default=10, type=int,
+                        help='Days between becoming infected / positive '
+                             'confirmation (due to incubation period / testing '
+                             'latency')
+    parser.add_argument('--start-model', default=23, type=int,
+                        help='The day where we begin our fit (after delay '
+                             'days)')
+    parser.add_argument('--incubation-days', default=5, type=int,
+                        help='Incubation period, default from [Backer et al]')
+    parser.add_argument('--estimated-r0', default=2.2, type=float,
+                        help='R0 estimated in literature')
+    parser.add_argument('--mask-modifier', action='store_true',
+                        help='Run mobility scenarios considering mask-wearing')
+    parser.add_argument('--mask-day', default=65, type=int,
+                        help='Day of mask order')
+
+    args = parser.parse_args()
+
+    pipeline(args)
