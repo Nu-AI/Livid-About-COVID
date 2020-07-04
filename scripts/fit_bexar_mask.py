@@ -21,27 +21,8 @@ RESULTS_DIR = os.path.join(ROOT_DIR, 'Prediction_results')
 if not os.path.exists(RESULTS_DIR):
     os.mkdir(RESULTS_DIR)
 
-from SIRNet import util, trainer
-from scripts import retrieve_data
-
-########### ASSUMPTIONS ##############################
-######################################################
-# country = 'United States'
-# state = 'Texas'
-# county = 'Bexar County'
-# # @formatter:off
-# delay_days = 10          # Days between becoming infected / positive confirmation (due to incubation period / testing latency
-# start_model = 23         # The day where we begin our model_and_fit
-# mask_modifier = False    #
-# mask_day = 65            # Day of mask order
-# incubation_days = 5      # 5 day incubation period [Backer et al]
-# estimated_r0 = 2.2       # 2.2 R0 estimated in literature
-# n_epochs = 200           # number of training epochs
-# lr_step_size = 4000      # learning rate decay step size
-# forecast_days = 200      # number of days to forecast
-# reporting_rates = [0.05, 0.1, 0.3]     # Portion of cases that are actually detected
-# mobility_cases = [25, 50, 75, 100]
-# @formatter:on
+from SIRNet import util, trainer  # noqa
+from scripts import retrieve_data  # noqa
 
 MOBILITY_KEYS = ['Retail & recreation', 'Grocery & pharmacy', 'Parks',
                  'Transit stations', 'Workplace', 'Residential']
@@ -50,8 +31,19 @@ timestamp = dt.datetime.now().strftime('%Y_%m_%d_%H_%M')
 
 
 def load_data(params):
+    """
+    Loads the data used in training and forecasting according to the
+    configuration specified in `params`.
+
+    :param params: object holding global configuration values
+
+    :return: mobility data
+    :return: cases data
+    :return: day0 - date string of first day of data
+    :return: population - the population for the region
+    :return: prev_cases - the number of cases on the day preceding day0
+    """
     ############## Simplified Data ####################
-    ###################################################
     paramdict = {
         'country': params.country,
         'states': [params.state],
@@ -75,7 +67,6 @@ def load_data(params):
     mobility = np.array(mobility[:-params.delay_days])
 
     ###################### Formatting Data ######################
-    #############################################################
     mobility[-1][-1] = 17.0  # TODO what is this
     mobility = np.asarray(mobility).astype(np.float32)
     # convert percentages of change to fractions of activity
@@ -94,6 +85,20 @@ def load_data(params):
 
 
 def model_and_fit(weights_name, X, Y, scale_factor, prev_cases, params):
+    """
+    Builds a model with weights at a provided file and fits the model with
+    provided data.
+
+    :param weights_name: path to the weights file
+    :param X: input examples (time steps x batch size x features)
+    :param Y: output labels (time steps x batch size x classes)
+    :param scale_factor: factor with which to scale cases
+    :param prev_cases: the number of cases preceding the first day in the
+        forecast (used in I_0, the initial infection rate)
+    :param params: object holding global configuration values
+
+    :return: SIRNet PyTorch model
+    """
     # Initial conditions
     i0 = float(prev_cases) / scale_factor
     e0 = params.estimated_r0 * i0 / params.incubation_days
@@ -107,12 +112,23 @@ def model_and_fit(weights_name, X, Y, scale_factor, prev_cases, params):
 
 
 def forecast(X, model, dates, scale_factor, params):
+    """
+    Forecasts future values according to configuration set in `params`.
+
+    :param X: the input data that the model forecasts upon
+    :param model: the PyTorch SIRNet model
+    :param dates: the dates of the forecast
+    :param scale_factor: factor with which to scale cases
+    :param params: object holding global configuration values
+
+    :return: active and total case forecasts for each mobility scenario
+    """
     ################ Forecasting #######################
-    ####################################################
     print('Begin forecasting...')
     active = {}
     total = {}
 
+    print('\n#########################################\n\n')
     for case in params.mobility_cases:
         xN = torch.ones((1, 6), dtype=torch.float32) * case / 100
         xN[0, 5] = 0
@@ -125,20 +141,28 @@ def forecast(X, model, dates, scale_factor, params):
         active[case] = s[:, 0] * scale_factor
         total[case] = (s[:, 0] + s[:, 1]) * scale_factor
 
-    ############### Reporting #########################
-    ###################################################
-    print('\n#########################################\n\n')
-    for case in params.mobility_cases:
+        ############### Reporting #########################
         M = np.max(active[case])
         idx = np.argmax(active[case])
         print('Case: {}%'.format(case))
         print('  Max value: {}'.format(M))
         print('  Day: {}, {}'.format(idx, dates[idx]))
 
-    return active, total, dates
+    return active, total
 
 
 def plot(cases, actives, totals, dates, params):
+    """
+    Plot forecasts.
+
+    :param cases: ground truth case data
+    :param actives: active cases (dict mapping reporting rates to forecast
+        dicts)
+    :param totals: total cases (dict mapping reporting rates to forecast dicts)
+    :param dates: dates for each forecast value
+    :param params: object holding global configuration values
+    """
+    # TODO: this function uses hard-coded reporting rates
     gt = np.squeeze(cases)
 
     # plot styles & plot letters
@@ -209,6 +233,13 @@ def plot(cases, actives, totals, dates, params):
 
 
 def pipeline(params):
+    """
+    Pipeline for loading COVID-19-related data, building and fitting an instance
+    of the PyTorch SIRNet model, forecasting for future dates, and plotting the
+    results. Weights and figures are saved in the process.
+
+    :param params: object holding global configuration values
+    """
     ## Cases ##
     print('Loading data for {}, {}, {}...'.format(
         params.county, params.state, params.country))
@@ -264,7 +295,7 @@ def pipeline(params):
 
         ################ Forecasting #######################
         ####################################################
-        active, total, dates = forecast(X, model, dates, scale_factor, params)
+        active, total = forecast(X, model, dates, scale_factor, params)
         actives[reporting_rate] = active
         totals[reporting_rate] = total
 
