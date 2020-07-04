@@ -10,14 +10,14 @@ import torch
 ############### Paths ##############################
 ####################################################
 
-ROOT_DIR = os.path.join(os.path.dirname(__file__), '..')
+ROOT_DIR = pjoin(os.path.dirname(__file__), '..')
 sys.path.append(ROOT_DIR)
 
-WEIGHTS_DIR = os.path.join(ROOT_DIR, 'model_weights')
+WEIGHTS_DIR = pjoin(ROOT_DIR, 'model_weights')
 if not os.path.exists(WEIGHTS_DIR):
     os.mkdir(WEIGHTS_DIR)
 
-RESULTS_DIR = os.path.join(ROOT_DIR, 'Prediction_results')
+RESULTS_DIR = pjoin(ROOT_DIR, 'Prediction_results')
 if not os.path.exists(RESULTS_DIR):
     os.mkdir(RESULTS_DIR)
 
@@ -190,7 +190,7 @@ def plot(cases, actives, totals, dates, params):
     plt.ylabel('Count')
     plt.yscale('log')
     util.plt_setup()
-    plt.savefig(RESULTS_DIR + '/{}_Total_Cases.pdf'.format(timestamp))
+    plt.savefig(pjoin(RESULTS_DIR, '{}_Total_Cases.pdf'.format(timestamp)))
     plt.show()
 
     # Plots 2 & 3. Active Cases (zoomed out and zoomed in)
@@ -227,8 +227,8 @@ def plot(cases, actives, totals, dates, params):
         if zoom:
             plt.ylim((0, gt[-1]))
         util.plt_setup()
-        plt.savefig(RESULTS_DIR + '/{}_Active_Cases{}.pdf'.format(
-            timestamp, zoom))
+        plt.savefig(pjoin(RESULTS_DIR,
+                          '{}_Active_Cases{}.pdf'.format(timestamp, zoom)))
         plt.show()
 
 
