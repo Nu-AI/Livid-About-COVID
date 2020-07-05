@@ -283,24 +283,24 @@ def pipeline(params):
         Y = Y.reshape(Y.shape[0], 1, 1)  # time x batch x channels
 
         #################### Training #######################
-        #####################################################
-        weights_name = pjoin(weights_dir_base, '{}_report{}_weights.pt'.format(
-            county_name, reporting_rate))  # TODO this does not fit properly...
-        # weights_name = pjoin(weights_dir_base, '{}_weights.pt'.format(
-        #     county_name))
+        # NOTE: this one is broken
+        # weights_name = pjoin(weights_dir_base, '{}_report{}_weights.pt'.format(
+        #     county_name, reporting_rate))  # TODO this does not fit properly...
+
+        # NOTE: this one is working but reuses weights for all reporting rates...
+        weights_name = pjoin(weights_dir_base, '{}_weights.pt'.format(
+            county_name))
 
         model = model_and_fit(weights_name, X, Y, scale_factor, prev_cases,
                               params)
         print('Done training.')
 
         ################ Forecasting #######################
-        ####################################################
         active, total = forecast(X, model, dates, scale_factor, params)
         actives[reporting_rate] = active
         totals[reporting_rate] = total
 
     ############### Plotting ##########################
-    ###################################################
     print('Begin plotting...')
     plot(cases, actives, totals, dates, params)
 
