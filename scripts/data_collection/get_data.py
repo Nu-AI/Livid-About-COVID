@@ -173,8 +173,9 @@ def get_country_data():
     df_country = df[df['country_name']==pm.params['country']].reset_index()
     temp = df_country.keys()
     required_keylist = list(filter(lambda x:x.__contains__("mobility"), temp))
+    npi_keylist = [x for x in temp if x.__contains__("npi")]
     add_cols = ['cases_total', 'deaths_total', 'DATE', 'country_name','census_fips_code', 'stats_population']
-    required_keylist = required_keylist + add_cols
+    required_keylist = required_keylist + add_cols + npi_keylist
     new_df = df_country[required_keylist]
     date_vals = df_country['DATE']
     date_vals.apply(lambda x:x.strftime('%Y-%m-%d'))

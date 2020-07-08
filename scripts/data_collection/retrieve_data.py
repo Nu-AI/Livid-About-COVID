@@ -196,13 +196,15 @@ def conflate_data(paramdict):
             'mobility_transit_stations': 'Transit stations',
             'mobility_workplaces': 'Workplace',
             'mobility_residential': 'Residential', }, inplace=True)
-        df_required = df_required[
-            ['fips', 'Country', 'State', 'County', 'date', 'Population', 'Cases', 'Deaths',
+        npi_list = [x for x in df_required.keys() if x.__contains__('npi')]
+        required_keylist = ['fips', 'Country', 'State', 'County', 'date', 'Population', 'Cases', 'Deaths',
              'Retail & recreation',
-             'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']].reset_index()
+             'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']
+        final_keylist = required_keylist + npi_list
+        df_required = df_required[final_keylist].reset_index()
 
     df_required.to_csv("formatted_all_data.csv")
-    #print(df_required.head(20))
+    print(df_required.tail(20))
     return df_required
 
 # Parameters to change to get the data
