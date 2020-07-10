@@ -3,8 +3,8 @@ global params
 
 params = {
     'country': 'United States',         # Can be only one country
-    'states' : None,               # Can enter either one or multiple states
-    'counties' : None # Can enter multiple or one county. If all counties are required, fill in ['all']
+    'states' : ['Texas'],               # Can enter either one or multiple states
+    'counties' : ['all'] # Can enter multiple or one county. If all counties are required, fill in ['all']
 }
 
 COUNTY_CASE_DATA_SOURCE  = "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"

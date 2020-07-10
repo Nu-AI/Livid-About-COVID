@@ -54,7 +54,7 @@ def extend_required_df(df):
     # Get the end date in the cases data
     date_list = state_cases_df['date'].unique().tolist()
     date2 = pd.to_datetime(date_list[-1])
-
+    print ("the length of df", len(df))
     # Get the end date in the mobility dataframe
     date1 = pd.to_datetime(df['date'][df.index[-1]])
 
@@ -91,8 +91,8 @@ def apply_extension(df, region):
     # Extending the df for all the required counties
     for county in unique_list:
         print (county)
-        df = extend_required_df(df[df[region]==county])
-        new_df_list.append(df)
+        new_df = extend_required_df(df[df[region]==county])
+        new_df_list.append(new_df)
     return pd.concat(new_df_list, sort=True)
 
 
