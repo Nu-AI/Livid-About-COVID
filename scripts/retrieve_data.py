@@ -19,11 +19,10 @@ pd.set_option('display.max_colwidth', -1)
 
 # Setting the parameters for the data required.
 # If require data for only country or states, then set counties to None
-defaultParams = {
-    'country': 'Spain',  # Can be only one country
-    'states': None,  # Can enter either one or multiple states
-    'counties': None
-    # Can enter multiple or one county. If all counties are required, fill in ['all']
+defaultParams={
+    'country': 'United States',         # Can be only one country
+    'states' : None,               # Can enter either one or multiple states
+    'counties' : None # Can enter multiple or one county. If all counties are required, fill in ['all']
 }
 
 
@@ -48,10 +47,14 @@ class DataRetriever(object):
                     'census_fips_code', 'stats_population']
         required_keylist = required_keylist + add_cols
         new_df = df_country[required_keylist]
+        date_vals = df_country['DATE']
+        date_vals.apply(lambda x:x.strftime('%Y-%m-%d'))
+        new_df.DATE = date_vals
         redundant_cols = np.empty(len(new_df['DATE'].values.tolist()))
         new_df['State'] = redundant_cols.fill(np.NaN)
         new_df['County'] = redundant_cols.fill(np.NaN)
         return new_df
+
 
     def fill_missing_days_df(self, df_required):
         end_date = pd.to_datetime(df_required['date'][df_required.index[-1]])
@@ -464,10 +467,16 @@ def get_data(paramdict):
 
     # Start with the mobility data
     df_required = data.get_mobility_data()
-    # The below case exists because of lack of data integration for countries
-    # other than USA
-    # TODO incorporate population metrics for other countries
-    if paramdict['country'] == 'United States' or paramdict['country'] is None:
+    #print(data.fill_missing_days_df(df_required[df_required['sub_region_2'] == 'Ferry County']))
+    #print(df_required)
+    country_flag = 0
+    # The below case exists because of lack of data integration for countries other than USA
+    if (paramdict['country'] == 'United States'):
+        if(paramdict['states'] is not None or paramdict['counties'] is not None):
+            country_flag = 1
+
+    # # TODO incorporate population metrics for other countries
+    if country_flag==1 or paramdict['country'] is None:
 
         # Get the population data
         pop_df = data.get_population_data(df_required)
