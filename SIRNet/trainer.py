@@ -26,10 +26,10 @@ class Trainer(object):
         model.add_module('SEIRNet', SEIRNet(e0=e0, i0=i0, b_model=b_model,
                                             update_k=update_k))
         if os.path.exists(self.weights_path):
-            model.load_state_dict(torch.load(self.weights_path),strict=False)
+            model.load_state_dict(torch.load(self.weights_path))
         return model
 
-    def iteration(self, model, loss, optimizer, x, y, log_loss=False):
+    def iteration(self, model, loss, optimizer, x, y, log_loss=True):
         optimizer.zero_grad()
 
         hx, fx = model.forward(x)
