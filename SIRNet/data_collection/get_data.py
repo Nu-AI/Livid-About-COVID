@@ -157,7 +157,7 @@ def get_cases_data(df):
         return state_cases_df.sort_values(by=['state', 'date']).reset_index()
 
 
-# Get the intervention setting dates for the different counties and states in USA
+# Get intervention setting dates for the different counties and states in USA
 def get_intervention_data():
     df_data = pd.read_csv(urllib.request.urlopen(pm.INTERVENTION_DATA_SOURCE),
                           sep=',', error_bad_lines=False)

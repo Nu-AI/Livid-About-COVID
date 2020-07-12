@@ -92,7 +92,7 @@ def conflate_data(paramdict, verbose=0):
             # Decimate the unuseful columns from the dataframe
             df_intervention = \
                 df_intervention[
-                    df_intervention['start_date'].isnull() == False |
+                    (~df_intervention['start_date'].isnull()) |
                     df_intervention['start_date'].isin([' '])][
                     ['county', 'state', 'npi', 'start_date']]
 
