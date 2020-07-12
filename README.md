@@ -48,9 +48,6 @@ to forecast the number of cases. One model is a hybrid Susceptible-Infected-Reco
 architecture. Our code can be run from the scripts in the `scripts` directory. Some code is
 available in the `notebooks` directory.
 
-Sample results (preliminary) for Bexar County, TX, USA.
-
-
 ## Types of Data
 1. Confirmed Cases
 2. Deaths

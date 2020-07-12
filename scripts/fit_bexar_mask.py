@@ -5,9 +5,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import torch
 import datetime as dt
-import retrieve_data 
-
-
 
 ############### Paths ##############################
 ####################################################
@@ -24,6 +21,7 @@ if not os.path.exists(RESULTS_DIR):
     os.mkdir(RESULTS_DIR)
 
 from SIRNet import util, trainer
+from SIRNet.data_collection import retrieve_data
 
 ########### ASSUMPTIONS ##############################
 ######################################################
@@ -44,7 +42,7 @@ for reporting_rate in [0.05, 0.1, 0.3]:
   paramdict['country'] = 'United States'
   paramdict['states'] = ['Texas']
   paramdict['counties'] = ['Bexar County']
-  df = retrieve_data.get_data(paramdict)
+  df = retrieve_data.conflate_data(paramdict)
 
   mobility = df[['Retail & recreation', 'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']]
   cases = df['Cases']
