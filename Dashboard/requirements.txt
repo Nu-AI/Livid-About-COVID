@@ -1,0 +1,15 @@
+# Dash Dependencies
+
+dash
+cufflinks
+plotly
+plotly-express
+
+# JSON Dependency
+json
+geojson
+geopandas
+
+
+# Html response
+urllib3

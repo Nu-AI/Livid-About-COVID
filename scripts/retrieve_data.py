@@ -32,9 +32,23 @@ class data_retriever():
         self.country = country
         self.counties = counties
 
+    def get_country_data(self):
+        df = pd.read_csv('https://raw.githubusercontent.com/rs-delve/covid19_datasets/master/dataset/combined_dataset_latest.csv', parse_dates=['DATE'])
+        df_country = df[df['country_name']==self.country].reset_index()
+        temp = df_country.keys()
+        required_keylist = list(filter(lambda x:x.__contains__("mobility"), temp))
+        add_cols = ['cases_total', 'deaths_total', 'DATE', 'country_name','census_fips_code', 'stats_population']
+        required_keylist = required_keylist + add_cols
+        new_df = df_country[required_keylist]
+        date_vals = df_country['DATE']
+        date_vals.apply(lambda x:x.strftime('%Y-%m-%d'))
+        new_df.DATE = date_vals
+        redundant_cols = np.empty(len(new_df['DATE'].values.tolist()))
+        new_df['State'] = redundant_cols.fill(np.NaN)
+        new_df['County'] = redundant_cols.fill(np.NaN)
+        return new_df
 
     # Method to align the length of table for the mobility data to match the length of case data
-
     def fill_missing_days_df(self, df_required):
         end_date = pd.to_datetime(df_required['date'][df_required.index[-1]])
         # Fill in the missing days in the mobility data
@@ -146,8 +160,6 @@ class data_retriever():
                 #df_required = df_state.where(df_state['sub_region_2'].isin(self.counties)==True).dropna(how='all').reset_index()
 
             return df_required
-
-
 
     #Get the lookup table for getting population data
     @staticmethod
@@ -412,10 +424,14 @@ def get_data(paramdict):
     df_required = data.get_mobility_data()
     #print(data.fill_missing_days_df(df_required[df_required['sub_region_2'] == 'Ferry County']))
     #print(df_required)
+    country_flag = 0
     # The below case exists because of lack of data integration for countries other than USA
+    if (paramdict['country'] == 'United States'):
+        if(paramdict['states'] is not None or paramdict['counties'] is not None):
+            country_flag = 1
 
     # # TODO incorporate population metrics for other countries
-    if paramdict['country'] == 'United States' or paramdict['country'] is None:
+    if country_flag==1 or paramdict['country'] is None:
 
         # Get the poppulation data
         pop_df = data.get_population_data(df_required)
@@ -575,13 +591,35 @@ def get_data(paramdict):
 
             df_required = df_required[['Index', 'fips', 'Country', 'State', 'County', 'date', 'Population', 'Cases','Deaths', 'Retail & recreation',
                                    'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential','Intervention']].reset_index()
-
         else:
             df_required = df_required[
                 ['Index', 'fips', 'Country', 'State', 'County', 'date', 'Population', 'Cases', 'Deaths', 'Retail & recreation',
                  'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']].reset_index()
+    else:
+        # In the case it is not United states, then loading from a new data source
+        data = data_retriever(country=paramdict['country'], states = paramdict['states'], counties = paramdict['counties'])
+        df_required = data.get_country_data()
+        df_required.rename(columns={
+            'index'                                             : 'Index',
+            'cases_total'                                       : 'Cases',
+            'census_fips_code'                                  : 'fips',
+            'stats_population'                                  : 'Population',
+            'deaths_total'                                      : 'Deaths',
+            'country_name'                                      : 'Country',
+            'DATE'                                              : 'date',
+            'mobility_retail_recreation'                        : 'Retail & recreation',
+            'mobility_grocery_pharmacy'                         : 'Grocery & pharmacy',
+            'mobility_parks'                                    : 'Parks',
+            'mobility_transit_stations'                         : 'Transit stations',
+            'mobility_workplaces'                               : 'Workplace',
+            'mobility_residential'                              : 'Residential', }, inplace=True)
+        df_required = df_required[
+            [ 'fips', 'Country', 'State', 'County', 'date', 'Population', 'Cases', 'Deaths',
+             'Retail & recreation',
+             'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']].reset_index()
+
     df_required.to_csv("formatted_all_data.csv")
-    print (df_required.head(200))
+    #print (df_required.head(20))
     return df_required
 
 # Parameters to change to get the data
