@@ -9,7 +9,6 @@ import torch
 
 ############### Paths ##############################
 ####################################################
-
 ROOT_DIR = pjoin(os.path.dirname(__file__), '..')
 sys.path.append(ROOT_DIR)
 
@@ -131,7 +130,6 @@ def forecast(X, model, dates, scale_factor, params):
     active = {}
     total = {}
 
-    print('\n#########################################\n\n')
     for case in params.mobility_cases:
         xN = torch.ones((1, 6), dtype=torch.float32) * case / 100
         xN[0, 5] = 0
@@ -182,9 +180,13 @@ def plot(cases, actives, totals, dates, params):
                  label='{}. {}% Mobility'.format(cl[case], case))
         # plt.fill_between(dates, totals[.05][case], totals[.30][case],
         #                  color=cs[case][0], alpha=.1)
-        plt.fill_between(dates, totals[.05][case], totals[.1][case],
+        plt.fill_between(dates,
+                         totals[.05][case],
+                         totals[.1][case],
                          color=cs[case][0], alpha=.1)
-        plt.fill_between(dates, totals[.1][case], totals[.30][case],
+        plt.fill_between(dates,
+                         totals[.1][case],
+                         totals[.30][case],
                          color=cs[case][0], alpha=.1)
         plt.text(dates[pidx], totals[.1][case][pidx], cl[case])
     plt.plot(dates[:gt.shape[0]], gt, 'ks', label='SAMHD Data')
@@ -269,7 +271,9 @@ def pipeline(params):
     dates = [date0 + dt.timedelta(days=int(d)) for d in days]
 
     for reporting_rate in params.reporting_rates:
+        print('\n' + '=' * 80)
         print('Begin pipeline with reporting rate {}'.format(reporting_rate))
+        print('=' * 80 + '\n')
 
         # Split into input and output data
         X, Y = mobility, cases
@@ -290,7 +294,7 @@ def pipeline(params):
         # weights_name = pjoin(weights_dir_base, '{}_report{}_weights.pt'.format(
         #     county_name, reporting_rate))  # TODO this does not fit properly...
 
-        # NOTE: this one is working but reuses weights for all reporting rates...
+        # NOTE: this one is working but reuses weights for all reporting rates..
         weights_name = pjoin(weights_dir_base, '{}_weights.pt'.format(
             county_name))
 
