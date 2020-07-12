@@ -22,7 +22,7 @@ if not os.path.exists(RESULTS_DIR):
     os.mkdir(RESULTS_DIR)
 
 from SIRNet import util, trainer  # noqa
-from scripts import retrieve_data  # noqa
+from SIRNet.data_collection import retrieve_data  # noqa
 
 MOBILITY_KEYS = ['Retail & recreation', 'Grocery & pharmacy', 'Parks',
                  'Transit stations', 'Workplace', 'Residential']
@@ -49,7 +49,7 @@ def load_data(params):
         'states': [params.state],
         'counties': [params.county]
     }
-    df = retrieve_data.get_data(paramdict)
+    df = retrieve_data.conflate_data(paramdict)
 
     mobility = df[MOBILITY_KEYS]
     cases = df['Cases']
