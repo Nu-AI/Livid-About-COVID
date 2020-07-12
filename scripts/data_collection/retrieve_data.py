@@ -22,6 +22,8 @@ pd.set_option('display.max_colwidth', -1)
 
 
 def conflate_data(paramdict):
+
+    parameters.update_params(paramdict)
     # Start with the mobility data
     df_required = get_data.get_mobility_data()
 

@@ -1,11 +1,13 @@
 
-global params
 
 params = {
     'country': 'United States',         # Can be only one country
     'states' : ['Texas'],               # Can enter either one or multiple states
-    'counties' : ['all'] # Can enter multiple or one county. If all counties are required, fill in ['all']
+    'counties' : ['Bexar County'] # Can enter multiple or one county. If all counties are required, fill in ['all']
 }
+
+def update_params(paramdict):
+    params.update(paramdict)
 
 COUNTY_CASE_DATA_SOURCE  = "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
 MOBILITY_DATA_SOURCE     = "https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv"
