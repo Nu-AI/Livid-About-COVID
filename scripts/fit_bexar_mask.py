@@ -105,6 +105,9 @@ def model_and_fit(weights_name, X, Y, scale_factor, prev_cases, params):
 
     trnr = trainer.Trainer(weights_name)
     model = trnr.build_model(e0, i0)
+    # TODO: temp test...
+    trnr.train(model, X, Y,
+               iters=1, step_size=params.lr_step_size)
     trnr.train(model, X, Y,
                iters=params.n_epochs, step_size=params.lr_step_size)
 

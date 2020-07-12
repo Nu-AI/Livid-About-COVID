@@ -42,7 +42,9 @@ class Trainer(object):
         output.backward()
         optimizer.step()
 
-        return output.data.item()
+        cost = output.data.item()
+        # print('cost', cost)
+        return cost
 
     def train(self, model, X, Y, iters, step_size=4000):
         # Optimizer, scheduler, loss

@@ -134,6 +134,7 @@ class SIRNetBase(ABC, torch.nn.Module):
         for t in range(time_steps):
             # compute b
             b = self._forward_b(X[t])
+            # print('b', b)
             # update the hidden state of SIR-like model
             hidden = self._forward_update_state(hidden, prev_h, b)
             # update the outputs
