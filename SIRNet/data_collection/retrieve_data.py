@@ -1,12 +1,12 @@
 import pandas as pd
-import urllib.request
 import click
 import numpy as np
 import warnings
 
-warnings.filterwarnings("ignore")
-import parameters
-import get_data
+from . import parameters
+from . import get_data
+
+warnings.filterwarnings('ignore')
 
 ## Steps to do ---
 # Input will be county name and state name
@@ -21,41 +21,49 @@ pd.set_option('display.max_rows', None)
 pd.set_option('display.max_colwidth', -1)
 
 
-def conflate_data(paramdict):
-
+def conflate_data(paramdict, verbose=0):
     parameters.update_params(paramdict)
     # Start with the mobility data
     df_required = get_data.get_mobility_data()
 
     country_flag = 0
-    # The below case exists because of lack of data integration for countries other than USA
-    if (paramdict['country'] == 'United States') and (paramdict['states'] is not None or paramdict['counties'] is not None):
-            country_flag = 1
-
-    # # TODO incorporate population metrics for other countries
+    # The below case exists because of lack of data integration for countries
+    # other than USA
+    if (paramdict['country'] == 'United States' and
+            (paramdict['states'] is not None or
+             paramdict['counties'] is not None)):
+        country_flag = 1
+    # Required keys in DFs
+    required_keys = [
+        'fips', 'Country', 'State', 'County', 'date', 'Population', 'Cases',
+        'Deaths', 'Retail & recreation', 'Grocery & pharmacy', 'Parks',
+        'Transit stations', 'Workplace', 'Residential'
+    ]
+    # TODO incorporate population metrics for other countries
     if country_flag == 1 or paramdict['country'] is None:
+        required_keys.insert(0, 'Index')
 
-        # Get the poppulation data
+        # Get the population data
         pop_df = get_data.get_population_data(df_required)
-        pop_df = pop_df.reset_index(drop=True)
+        pop_df.reset_index(drop=True, inplace=True)
 
         # Decimate non required columns
         pop_df = pop_df[['State', 'Geographic Area', 'Unnamed: 12']]
 
         # Rename the columns to proper distribution
         pop_df.rename(columns={
-            'State': 'State',
             'Geographic Area': 'County',
             'Unnamed: 12': 'Population'
         }, inplace=True)
         pop_list = pop_df['Population'].tolist()
 
-        # Create an updated population list to account for the variability in sizes of mobility data
+        # Create an updated population list to account for the variability in
+        # sizes of mobility data
         county_list = list(df_required['sub_region_2'].values)
         unique_list = list(df_required['sub_region_2'].unique())
         counter = [county_list.count(i) for i in unique_list]
-        print(counter, pop_list)
-        pop_list = [pop_list[j] for j in range(len(counter)) for _ in range(counter[j])]
+        pop_list = [pop_list[j] for j in range(len(counter)) for _ in
+                    range(counter[j])]
 
         df_required['Population'] = pop_list
 
@@ -63,29 +71,29 @@ def conflate_data(paramdict):
         county_cases_df = get_data.get_cases_data(df_required)
 
         # Add the cases and deaths to the final table
-        c_list = county_cases_df['county'].unique().tolist()
-        print(c_list)
+        if verbose:
+            c_list = county_cases_df['county'].unique().tolist()
+            print('Unique Countries in Data:')
+            print(c_list)
 
-        # print(df_required.size)
         df_required['Cases'] = county_cases_df['cases'].values
         df_required['Deaths'] = county_cases_df['deaths'].values
         fips_list = county_cases_df['fips'].values
         df_required['fips'] = list(map(int, fips_list))
+
         # Uncomment to save as csvs
         # pop_df.to_csv("formatted_population.csv")
 
-        #######################################################################################################################
-        ### Add the intervention data to the required dataframe
-
-        if (paramdict['counties'] is None or 'all' not in paramdict['counties']):
-            # if (paramdict['counties'] is not None):
-            # print ("entered the condition")
+        ########################################################################
+        # Add the intervention data to the required dataframe
+        if paramdict['counties'] is None or 'all' not in paramdict['counties']:
             df_intervention = get_data.get_intervention_data()
 
             # Decimate the unuseful columns from the dataframe
             df_intervention = \
                 df_intervention[
-                    df_intervention['start_date'].isnull() == False | df_intervention['start_date'].isin([' '])][
+                    df_intervention['start_date'].isnull() == False |
+                    df_intervention['start_date'].isin([' '])][
                     ['county', 'state', 'npi', 'start_date']]
 
             # Select whether it is required for counties or states
@@ -94,26 +102,26 @@ def conflate_data(paramdict):
             else:
                 id_string = 'sub_region_2'
                 # Update the county names to map with the main table
-                county_list_i = list(df_intervention['county'].values)
-                # print (county_list_i)
-                county_list_i = [str(i) + " County" for i in county_list_i]
+                county_list_i = [str(i) + ' County'
+                                 for i in df_intervention['county'].values]
                 df_intervention['county'] = county_list_i
 
             a = np.empty((len(df_required['date'])))
             df_required['Intervention'] = a.fill(np.NaN)
 
             # Updating the date values to map with the main table
-            date_list = pd.to_datetime(df_intervention['start_date'].tolist(), infer_datetime_format=True).tolist()
-            date_list = [str(i).split(" ")[0] for i in date_list]
+            date_list = pd.to_datetime(df_intervention['start_date'].tolist(),
+                                       infer_datetime_format=True).tolist()
+            date_list = [str(i).split(' ')[0] for i in date_list]
 
-            # Rename the columns of the intervention dataframe to sync with the required table
+            # Rename the columns of the intervention dataframe to sync with the
+            # required table
             df_intervention['start_date'] = date_list
             df_intervention.rename(columns={
                 'start_date': 'date',
                 'state': 'sub_region_1',
                 'county': 'sub_region_2'
             }, inplace=True)
-
 
             # Create a new dictionary to be merged with the required table
             new_date_list = df_intervention['date'].tolist()
@@ -131,26 +139,28 @@ def conflate_data(paramdict):
                 string = ''
                 for j in range(len(comparator_list)):
                     if unique_comparisons[i] == comparator_list[j]:
-                        if string != '':
-                            string = string + " & " + npi_list[j]
-                        else:
-                            string = npi_list[j]
+                        if string:
+                            string += ' & '
+                        string += npi_list[j]
                 new_npi_list.append(string)
 
-            # Populate the new dictionary with the reformatted intervention data and convert to dataframe
-            updated_county_list = [unique_comparisons[i][0] for i in range(len(unique_comparisons))]
-            updated_date_list = [unique_comparisons[i][1] for i in range(len(unique_comparisons))]
-            dict_intervention = {}
-            dict_intervention[id_string] = updated_county_list
-            dict_intervention['date'] = updated_date_list
-            dict_intervention['Intervention'] = new_npi_list
+            # Populate the new dictionary with the reformatted intervention data
+            # and convert to dataframe
+            updated_county_list = [unique_comparisons[i][0]
+                                   for i in range(len(unique_comparisons))]
+            updated_date_list = [unique_comparisons[i][1]
+                                 for i in range(len(unique_comparisons))]
+            dict_intervention = {id_string: updated_county_list,
+                                 'date': updated_date_list,
+                                 'Intervention': new_npi_list}
             new_df_intervention = pd.DataFrame.from_dict(dict_intervention)
 
             # Combine the intervention dataframe with the main required table
             df_1 = df_required.set_index(['date', id_string])
             df_2 = new_df_intervention.set_index(['date', id_string])
             df_required = df_1.combine_first(df_2).reset_index()
-            df_required = df_required.sort_values(by=['sub_region_1', 'sub_region_2', 'date'])
+            df_required = df_required.sort_values(
+                by=['sub_region_1', 'sub_region_2', 'date'])
 
         # Rename the columns of the required table
         df_required.rename(columns={
@@ -164,25 +174,14 @@ def conflate_data(paramdict):
             'parks_percent_change_from_baseline': 'Parks',
             'transit_stations_percent_change_from_baseline': 'Transit stations',
             'workplaces_percent_change_from_baseline': 'Workplace',
-            'residential_percent_change_from_baseline': 'Residential'}, inplace=True)
+            'residential_percent_change_from_baseline': 'Residential'
+        }, inplace=True)
 
         # Keep only the useful columns in the dataframe
-        if (paramdict['counties'] is None or 'all' not in paramdict['counties']):
-
-            df_required = df_required[
-                ['Index', 'fips', 'Country', 'State', 'County', 'date', 'Population', 'Cases', 'Deaths',
-                 'Retail & recreation',
-                 'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential',
-                 'Intervention']].reset_index()
-
-        else:
-            df_required = df_required[
-                ['Index', 'fips', 'Country', 'State', 'County', 'date', 'Population', 'Cases', 'Deaths',
-                 'Retail & recreation',
-                 'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']].reset_index()
+        if paramdict['counties'] is None or 'all' not in paramdict['counties']:
+            required_keys.append('Intervention')
     else:
-        # In the case it is not United states, then loading from a new data source
-
+        # In the case it is not United states, then load from a new datasource
         df_required = get_data.get_country_data()
         df_required.rename(columns={
             'index': 'Index',
@@ -197,25 +196,26 @@ def conflate_data(paramdict):
             'mobility_parks': 'Parks',
             'mobility_transit_stations': 'Transit stations',
             'mobility_workplaces': 'Workplace',
-            'mobility_residential': 'Residential', }, inplace=True)
-        npi_list = [x for x in df_required.keys() if x.__contains__('npi')]
-        required_keylist = ['fips', 'Country', 'State', 'County', 'date', 'Population', 'Cases', 'Deaths',
-             'Retail & recreation',
-             'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']
-        final_keylist = required_keylist + npi_list
-        df_required = df_required[final_keylist].reset_index()
+            'mobility_residential': 'Residential'
+        }, inplace=True)
+        npi_list = [x for x in df_required.keys() if 'npi' in x]
+        required_keys += npi_list
 
+    df_required = df_required[required_keys].reset_index()
     df_required.to_csv("formatted_all_data.csv")
-    print(df_required.tail(20))
+    if verbose:
+        print(df_required.tail(20))
     return df_required
+
 
 # Parameters to change to get the data
 @click.command()
-@click.option('--country', default = parameters.params['country'])
-@click.option('--states', default = parameters.params['states'])
-@click.option('--counties', default = parameters.params['counties'])
-def main(country, states, counties):
+@click.option('--country', default=parameters.params['country'])
+@click.option('--states', default=parameters.params['states'])
+@click.option('--counties', default=parameters.params['counties'])
+def main():
     conflate_data(dict(click.get_current_context().params))
 
-if __name__=="__main__":
+
+if __name__ == '__main__':
     main()
