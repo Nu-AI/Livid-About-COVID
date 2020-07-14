@@ -185,7 +185,7 @@ def get_intervention_data():
 
     return df_intervention
 
-
+# Read the country level data from the RS-DELVE data source
 def get_country_data():
     df = pd.read_csv(pm.COUNTRY_DATA_SOURCE, parse_dates=['DATE'])
     df_country = df[df['country_name'] == pm.params['country']].reset_index()
