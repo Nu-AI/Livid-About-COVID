@@ -202,7 +202,7 @@ def conflate_data(paramdict, verbose=0):
         required_keys += npi_list
 
     df_required = df_required[required_keys].reset_index()
-    df_required.to_csv("formatted_all_data.csv")
+    #df_required.to_csv("formatted_all_data.csv")
     if verbose:
         print(df_required.tail(20))
     return df_required
