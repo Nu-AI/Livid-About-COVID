@@ -26,13 +26,13 @@ def conflate_data(paramdict, verbose=0):
     # Start with the mobility data
     df_required = get_data.get_mobility_data()
 
-    country_flag = 0
+    country_flag = 1
     # The below case exists because of lack of data integration for countries
     # other than USA
     if (paramdict['country'] == 'United States' and
             (paramdict['states'] is not None or
              paramdict['counties'] is not None)):
-        country_flag = 1
+        country_flag = 0
     # Required keys in DFs
     required_keys = [
         'fips', 'Country', 'State', 'County', 'date', 'Population', 'Cases',
@@ -40,7 +40,7 @@ def conflate_data(paramdict, verbose=0):
         'Transit stations', 'Workplace', 'Residential'
     ]
     # TODO incorporate population metrics for other countries
-    if country_flag == 1 or paramdict['country'] is None:
+    if country_flag == 0:
         required_keys.insert(0, 'Index')
 
         # Get the population data
@@ -179,8 +179,16 @@ def conflate_data(paramdict, verbose=0):
 
         # Keep only the useful columns in the dataframe
         if paramdict['counties'] is None or 'all' not in paramdict['counties']:
+            print (paramdict['counties'], "**********")
             required_keys.append('Intervention')
+
+        if paramdict['counties'] is None and paramdict['states'] is not None:
+            df_required = df_required.astype({'date': 'string'})
+            state_test_df, keys_added = get_data.get_testing_state_data()
+            df_required = df_required.merge(state_test_df,left_on='date', right_on='date', how='left')
+            required_keys.extend(keys_added)
     else:
+
         # In the case it is not United states, then load from a new datasource
         df_required = get_data.get_country_data()
         df_required.rename(columns={
@@ -207,15 +215,15 @@ def conflate_data(paramdict, verbose=0):
         print(df_required.tail(20))
     return df_required
 
-
+df_required = conflate_data(parameters.params, verbose=0)
 # Parameters to change to get the data
-@click.command()
-@click.option('--country', default=parameters.params['country'])
-@click.option('--states', default=parameters.params['states'])
-@click.option('--counties', default=parameters.params['counties'])
-def main():
-    conflate_data(dict(click.get_current_context().params))
-
-
-if __name__ == '__main__':
-    main()
+# @click.command()
+# @click.option('--country', default=parameters.params['country'])
+# @click.option('--states', default=parameters.params['states'])
+# @click.option('--counties', default=parameters.params['counties'])
+# def main():
+#     conflate_data(dict(click.get_current_context().params))
+#
+#
+# if __name__ == '__main__':
+#     main()
