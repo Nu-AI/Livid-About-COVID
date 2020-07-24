@@ -22,7 +22,7 @@ def get_mobility_data():
 
     # Check if data is required for only the country
     if pm.params['country'] is not None and pm.params['states'] is None:
-        df_country = df[df['country_region'] == pm.params['country']]
+        df_country = df[df['country_region'].isin(pm.params['country'])]
         df_country.dropna(how='all', inplace=True)
         df_country.reset_index(inplace=True)
         # If want all the county data also

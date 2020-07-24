@@ -29,7 +29,7 @@ def conflate_data(paramdict, verbose=0):
     country_flag = 1
     # The below case exists because of lack of data integration for countries
     # other than USA
-    if (paramdict['country'] == 'United States' and
+    if (paramdict['country'].__contains__('United States') and
             (paramdict['states'] is not None or
              paramdict['counties'] is not None)):
         country_flag = 0

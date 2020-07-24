@@ -1,7 +1,7 @@
 # @formatter:off
 params = {
-    'country': 'United States',  # Can be only one country
-    'states': ['Texas'],  # Can enter either one or multiple states
+    'country': ['United States'],  # Can enter multiple countries
+    'states': ['Texas'],  # Can enter either one or multiple states ( please specify United States also)
     'counties': None  # Can enter one or more counties - If all
     #   counties are required, fill in ['all']
 }
