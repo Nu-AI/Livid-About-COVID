@@ -153,7 +153,8 @@ def get_cases_data(df):
     else:
         state_cases_df = data_utils.read_csv(pm.STATE_CASE_DATA_SOURCE)
         state_cases_df = state_cases_update(state_cases_df)
-        state_cases_df = state_cases_df[['fips','date', 'state', 'cases', 'deaths']]
+        state_cases_df = state_cases_df[['fips', 'date', 'state',
+                                         'cases', 'deaths']]
         return state_cases_df.sort_values(by=['state', 'date']).reset_index()
 
 
@@ -185,12 +186,15 @@ def get_intervention_data():
 
     return df_intervention
 
+
 # Read the country level data from the RS-DELVE data source
 def get_country_data():
     df = pd.read_csv(pm.COUNTRY_DATA_SOURCE, parse_dates=['DATE'])
     df2 = pd.read_csv(pm.TESTING_COUNTRY_DATA_SOURCE)
-    df_country = df.loc[df['country_name'].isin(pm.params['country'])].reset_index()
-    df_country = df_country.merge(df2, how='outer', left_on = 'ISO', right_on = 'iso_code')
+    df_country = df.loc[df['country_name'].isin(pm.params['country'])]
+    df_country.reset_index(inplace=True)
+    df_country = df_country.merge(df2, how='outer', left_on='ISO',
+                                  right_on='iso_code')
 
     # Setting all the required columns
     temp = df_country.keys()
@@ -208,16 +212,14 @@ def get_country_data():
     new_df['County'] = redundant_cols.fill(np.NaN)
     return new_df
 
+
 def get_testing_state_data():
     df = pd.read_csv(pm.TESTING_STATE_DATA_SOURCE)
-    df = df[['date', 'state', 'totalTestsViral', 'positiveTestsViral', 'negativeTestsViral', 'dataQualityGrade']]
-    required_keys = ['totalTestsViral', 'positiveTestsViral', 'negativeTestsViral', 'dataQualityGrade']
+    required_keys = ['totalTestsViral', 'positiveTestsViral',
+                     'negativeTestsViral', 'dataQualityGrade']
+    df = df[required_keys + ['date', 'state']]
     name_list = [pm.NAME_LUT[i] for i in pm.params['states']]
     df = df.loc[df.state.isin(name_list)]
     df.date = pd.to_datetime(df.date, format='%Y%m%d')
     df = df.astype({'date': 'string'})
     return df[::-1], required_keys
-
-
-
-

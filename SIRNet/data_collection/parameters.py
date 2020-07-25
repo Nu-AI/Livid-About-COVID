@@ -1,13 +1,14 @@
-# @formatter:off
 params = {
-    'country': ['United States'],  # Can enter multiple countries
-    'states': ['Texas'],  # Can enter either one or multiple states ( please specify United States also)
-    'counties': None  # Can enter one or more counties - If all
-    #   counties are required, fill in ['all']
+    # Can enter multiple countries
+    'country': ['United States'],
+    # Can enter either one or multiple states (please specify United States
+    # also)
+    'states': ['Texas'],
+    # Can enter one or more counties - If all counties are required, fill in
+    # ['all']
+    'counties': None
 }
 
-
-# @formatter:on
 
 def update_params(paramdict):
     params.update(paramdict)
@@ -44,27 +45,16 @@ COUNTRY_DATA_SOURCE = (
     'combined_dataset_latest.csv'
 )
 TESTING_STATE_DATA_SOURCE = (
-    'https://covidtracking.com/api/v1/states/daily.csv'
+    'https://covidtracking.com/'
+    'api/v1/states/'
+    'daily.csv'
 )
 TESTING_COUNTRY_DATA_SOURCE = (
-    'https://covid.ourworldindata.org/data/owid-covid-data.csv'
+    'https://covid.ourworldindata.org/'
+    'data/'
+    'owid-covid-data.csv'
 )
 
-'''
-Below was generated with the following code:
-
-def get_lookup_table():
-    states = 'Alabama Alaska Arizona Arkansas California Colorado Connecticut Delaware Florida Georgia Hawaii Idaho Illinois Indiana Iowa Kansas Kentucky Louisiana Maine Maryland Massachusetts Michigan Minnesota Mississippi Missouri Montana Nebraska Nevada New_Hampshire New_Jersey New_Mexico New_York North_Carolina North_Dakota Ohio Oklahoma Oregon Pennsylvania Rhode_Island South_Carolina South_Dakota Tennessee Texas Utah Vermont Virginia Washington West_Virginia Wisconsin Wyoming'
-    states_list = states.split(' ')
-    keys = '01 02 04 05 06 08 09 10 12 13 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 44 45 46 47 48 49 50 51 53 54 55 56'
-    key_list = keys.split(' ')
-    LUT = {}
-    i = 0
-    for states in states_list:
-        LUT[states] = key_list[i]
-        i += 1
-    return LUT
-'''
 # The LUT for extracting the census data
 STATE_LUT = {
     'Alabama': '01',

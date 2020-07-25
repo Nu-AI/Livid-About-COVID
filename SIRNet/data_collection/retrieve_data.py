@@ -1,5 +1,4 @@
 import pandas as pd
-import click
 import numpy as np
 import warnings
 
@@ -8,17 +7,14 @@ from . import get_data
 
 warnings.filterwarnings('ignore')
 
-## Steps to do ---
+
+## Steps:
 # Input will be county name and state name
 # If all counties are required we take in all as the input
 # Gather the mobility data
 # Gather the pop data from the pop files ( create a lookup table for that first)
 # Gather the county names and active cases data
 # Gather the intervention data if the country selected is USA
-
-pd.set_option('display.max_columns', None)
-pd.set_option('display.max_rows', None)
-pd.set_option('display.max_colwidth', -1)
 
 
 def conflate_data(paramdict, verbose=0):
@@ -39,7 +35,6 @@ def conflate_data(paramdict, verbose=0):
         'Deaths', 'Retail & recreation', 'Grocery & pharmacy', 'Parks',
         'Transit stations', 'Workplace', 'Residential'
     ]
-    # TODO incorporate population metrics for other countries
     if country_flag == 0:
         required_keys.insert(0, 'Index')
 
@@ -81,7 +76,7 @@ def conflate_data(paramdict, verbose=0):
         fips_list = county_cases_df['fips'].values
         df_required['fips'] = list(map(int, fips_list))
 
-        # Uncomment to save as csvs
+        # Uncomment to save as csv
         # pop_df.to_csv("formatted_population.csv")
 
         ########################################################################
@@ -89,7 +84,7 @@ def conflate_data(paramdict, verbose=0):
         if paramdict['counties'] is None or 'all' not in paramdict['counties']:
             df_intervention = get_data.get_intervention_data()
 
-            # Decimate the unuseful columns from the dataframe
+            # Decimate the useless columns from the dataframe
             df_intervention = \
                 df_intervention[
                     (~df_intervention['start_date'].isnull()) |
@@ -179,17 +174,16 @@ def conflate_data(paramdict, verbose=0):
 
         # Keep only the useful columns in the dataframe
         if paramdict['counties'] is None or 'all' not in paramdict['counties']:
-            print (paramdict['counties'], "**********")
             required_keys.append('Intervention')
 
         if paramdict['counties'] is None and paramdict['states'] is not None:
             df_required = df_required.astype({'date': 'string'})
             state_test_df, keys_added = get_data.get_testing_state_data()
-            df_required = df_required.merge(state_test_df,left_on='date', right_on='date', how='left')
+            df_required = df_required.merge(state_test_df, left_on='date',
+                                            right_on='date', how='left')
             required_keys.extend(keys_added)
     else:
-
-        # In the case it is not United states, then load from a new datasource
+        # In the case it is not United states, then load from a new data source
         df_required = get_data.get_country_data()
         df_required.rename(columns={
             'index': 'Index',
@@ -210,20 +204,6 @@ def conflate_data(paramdict, verbose=0):
         required_keys += npi_list
 
     df_required = df_required[required_keys].reset_index()
-    #df_required.to_csv("formatted_all_data.csv")
     if verbose:
         print(df_required.tail(20))
     return df_required
-
-df_required = conflate_data(parameters.params, verbose=0)
-# Parameters to change to get the data
-# @click.command()
-# @click.option('--country', default=parameters.params['country'])
-# @click.option('--states', default=parameters.params['states'])
-# @click.option('--counties', default=parameters.params['counties'])
-# def main():
-#     conflate_data(dict(click.get_current_context().params))
-#
-#
-# if __name__ == '__main__':
-#     main()
