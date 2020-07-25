@@ -12,13 +12,15 @@ Dashboard/GEOJSONs/
 .idea/
 archive/
 model.png
-scripts_local/
-data_local/
-zach_data/
+/scripts_local/
+/data_local/
+/zach_data/
 mobility_pdfs/
 notebooks/*.csv
 /notes/
 /plots/
+/prediction_results/
+/run_logs/
 .~lock.*
 
 # Byte-compiled / optimized / DLL files

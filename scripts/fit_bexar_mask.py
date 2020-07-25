@@ -5,7 +5,6 @@ from os.path import join as pjoin
 
 import numpy as np
 import matplotlib.pyplot as plt
-import torch
 
 ############### Paths ##############################
 ####################################################
@@ -16,7 +15,7 @@ WEIGHTS_DIR = pjoin(ROOT_DIR, 'model_weights')
 if not os.path.exists(WEIGHTS_DIR):
     os.mkdir(WEIGHTS_DIR)
 
-RESULTS_DIR = pjoin(ROOT_DIR, 'Prediction_results')
+RESULTS_DIR = pjoin(ROOT_DIR, 'prediction_results')
 if not os.path.exists(RESULTS_DIR):
     os.mkdir(RESULTS_DIR)
 
@@ -83,7 +82,8 @@ def load_data(params):
     return mobility, cases, day0, population, prev_cases
 
 
-def model_and_fit(weights_name, X, Y, scale_factor, prev_cases, params):
+def model_and_fit(weights_name, X, Y, scale_factor, prev_cases, params,
+                  summary_writer=None):
     """
     Builds a model with weights at a provided file and fits the model with
     provided data.
@@ -95,6 +95,7 @@ def model_and_fit(weights_name, X, Y, scale_factor, prev_cases, params):
     :param prev_cases: the number of cases preceding the first day in the
         forecast (used in I_0, the initial infection rate)
     :param params: object holding global configuration values
+    :param summary_writer: optional Torch SummaryWriter object
 
     :return: SIRNet PyTorch model
     """
@@ -102,7 +103,7 @@ def model_and_fit(weights_name, X, Y, scale_factor, prev_cases, params):
     i0 = float(prev_cases) / scale_factor
     e0 = params.estimated_r0 * i0 / params.incubation_days
 
-    trnr = trainer.Trainer(weights_name)
+    trnr = trainer.Trainer(weights_name, summary_writer=summary_writer)
     model = trnr.build_model(e0, i0)
     trnr.train(model, X, Y,
                iters=params.n_epochs, step_size=params.lr_step_size)
@@ -160,32 +161,31 @@ def plot(cases, actives, totals, dates, params):
     :param dates: dates for each forecast value
     :param params: object holding global configuration values
     """
-    # TODO: this function uses hard-coded reporting rates
     gt = np.squeeze(cases)
 
-    # plot styles & plot letters
-    cs = {25: 'b-', 50: 'g--', 75: 'y-.', 100: 'r:'}
-    cl = {25: 'a', 50: 'b', 75: 'c', 100: 'd'}
+    # plot styles & plot letters - note this supports 4 mobility cases max
+    cs = dict(zip(params.mobility_cases, ['b-', 'g--', 'y-.', 'r:']))
+    cl = dict(zip(params.mobility_cases, 'abcd'))
 
     plt.rcParams.update({'font.size': 22})
+
+    rep_rates = sorted(params.reporting_rates)
+    rep_rate_mid = rep_rates[len(rep_rates) // 2]
 
     # Plot 1. Total Cases (Log)
     pidx = gt.shape[0] + 60  # write letter prediction at 60 days in the future
     plt.figure(dpi=100, figsize=(16, 8))
     for case in params.mobility_cases:
-        plt.plot(dates, totals[.1][case], cs[case], linewidth=4.0,
+        plt.plot(dates, totals[rep_rate_mid][case], cs[case], linewidth=4.0,
                  label='{}. {}% Mobility'.format(cl[case], case))
-        # plt.fill_between(dates, totals[.05][case], totals[.30][case],
-        #                  color=cs[case][0], alpha=.1)
-        plt.fill_between(dates,
-                         totals[.05][case],
-                         totals[.1][case],
-                         color=cs[case][0], alpha=.1)
-        plt.fill_between(dates,
-                         totals[.1][case],
-                         totals[.30][case],
-                         color=cs[case][0], alpha=.1)
-        plt.text(dates[pidx], totals[.1][case][pidx], cl[case])
+        for rep_rate_i in range(len(rep_rates) - 1):
+            plt.fill_between(dates,
+                             totals[rep_rates[rep_rate_i]][case],
+                             totals[rep_rates[rep_rate_i + 1]][case],
+                             color=cs[case][0], alpha=.1)
+        plt.text(dates[pidx],
+                 totals[rep_rate_mid][case][pidx],
+                 cl[case])
     plt.plot(dates[:gt.shape[0]], gt, 'ks', label='SAMHD Data')
 
     plt.title('Total Case Count')
@@ -201,15 +201,13 @@ def plot(cases, actives, totals, dates, params):
         for case in params.mobility_cases:
             plt.plot(dates, actives[.1][case], cs[case], linewidth=4.0,
                      label='{}. {}% Mobility'.format(cl[case], case))
-            # plt.fill_between(dates, actives[.05][case], actives[.30][case],
-            #                  color=cs[case][0], alpha=.1)
             plt.fill_between(dates,
                              actives[.05][case],
                              actives[.1][case],
                              color=cs[case][0], alpha=.1)
             plt.fill_between(dates,
                              actives[.1][case],
-                             actives[.30][case],
+                             actives[.3][case],
                              color=cs[case][0], alpha=.1)
             pidx = (gt.shape[0] + 10 if zoom else
                     np.argmax(actives[.1][case]))  # write at 10 days or peak
@@ -233,6 +231,8 @@ def plot(cases, actives, totals, dates, params):
                           '{}_Active_Cases{}.pdf'.format(timestamp, zoom)))
         plt.show()
 
+    print('Plots saved to "{}"'.format(RESULTS_DIR))
+
 
 def pipeline(params):
     """
@@ -242,7 +242,6 @@ def pipeline(params):
 
     :param params: object holding global configuration values
     """
-    ## Cases ##
     print('Loading data for {}, {}, {}...'.format(
         params.county, params.state, params.country))
 
@@ -257,6 +256,9 @@ def pipeline(params):
                         pjoin(WEIGHTS_DIR, timestamp))
     if not os.path.exists(weights_dir_base):
         os.mkdir(weights_dir_base)
+
+    if params.tensorboard:
+        from torch.utils import tensorboard
 
     actives = {}
     totals = {}
@@ -295,8 +297,19 @@ def pipeline(params):
         weights_name = pjoin(weights_dir_base, '{}_weights.pt'.format(
             county_name))
 
+        if params.tensorboard:
+            writer = tensorboard.SummaryWriter(
+                log_dir=pjoin('run_logs', timestamp, 'report{}_{}'.format(
+                    county_name, reporting_rate))
+            )
+        else:
+            writer = None
+
         model = model_and_fit(weights_name, X, Y, scale_factor, prev_cases,
-                              params)
+                              params, summary_writer=writer)
+
+        if params.tensorboard:
+            writer.close()
         print('Done training.')
 
         ################ Forecasting #######################
@@ -328,6 +341,10 @@ if __name__ == '__main__':
                         help='The state to look for county in data loading')
     parser.add_argument('--county', default='Bexar County',
                         help='The county used in data loading')
+    parser.add_argument('--tensorboard', action='store_true',
+                        help='Store logs to that can be visualized in '
+                             'tensorboard (this needs to be installed '
+                             'beforehand)')
     parser.add_argument('--forecast-days', default=200, type=int,
                         help='Number of days to forecast')
     parser.add_argument('--reporting-rates', default=[0.05, 0.1, 0.3],
@@ -339,7 +356,8 @@ if __name__ == '__main__':
                         type=float, nargs='+',
                         help='Percentage of mobility assumed in forecasts. '
                              'Multiple space-separated values can be passed in '
-                             'here.')
+                             'here. Note that 4 is the maximum number of cases'
+                             'supported.')
     parser.add_argument('--n-epochs', default=200, type=int,
                         help='Number of training epochs')
     parser.add_argument('--lr-step-size', default=4000, type=int,
@@ -370,4 +388,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    # Delayed imports for CLI speed
+    import torch
+
     pipeline(args)
+else:
+    import torch

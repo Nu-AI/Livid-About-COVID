@@ -11,7 +11,8 @@ class SIRNetBase(ABC, torch.nn.Module):
     N_OUTPUTS = 1
 
     def __init__(self, input_size=6, hidden_size=3, output_size=1, i0=5.6e-6,
-                 k=0.2, b_model='linear', update_k=False, b_kwargs=None):
+                 k=0.2, b_model='linear', update_k=False, b_kwargs=None,
+                 summary_writer=None):
         # TODO(document): b_kwargs are passed to _make_b_model and are not
         #  standard **kwargs as those may be used for other attributes or
         #  sub-models
@@ -44,16 +45,18 @@ class SIRNetBase(ABC, torch.nn.Module):
         self.i0 = Parameter(torch.tensor(i0, dtype=torch.float32),
                             requires_grad=False)
 
+        self.summary_writer = summary_writer
+
     def _make_b_model(self, lstm_hidden_size=None, lstm_bias=False):
         """Transforms input to b parameter of SIR-like models"""
         if self.b_model == 'linear':
             # Initialization from prior training
-            b_init = torch.tensor(
-                [[7.3690e-02, 1.0000e-04, 1.0000e-04, 6.5169e-02, 1.4331e-01,
-                  2.9631e-03]], dtype=torch.float32
-            )
-            self.i2b = torch.nn.Linear(self.input_size, 1, bias=False)
-            self.i2b.weight.data = b_init
+            # b_init = torch.tensor(
+            #     [[7.3690e-02, 1.0000e-04, 1.0000e-04, 6.5169e-02, 1.4331e-01,
+            #       2.9631e-03]], dtype=torch.float32
+            # )
+            # self.i2b = torch.nn.Linear(self.input_size, 1, bias=False)
+            # self.i2b.weight.data = b_init
 
             # p and q
             self.p = Parameter(torch.tensor([[2.5]], dtype=torch.float32),
@@ -86,20 +89,16 @@ class SIRNetBase(ABC, torch.nn.Module):
             b_inter, (self.h_t, self.c_t) = self.i2l(
                 xt[None, ...], (self.h_t, self.c_t)).squeeze(dim=1)
             # TODO No negative contact rates...pytorch does not have LSTM
-            #  option to change tanh to relu this is dumb and needs fixing
-            #  here for valid b that also trains well...need custom LSTM
-            #  implementation in Python to change activation function
+            #  option to change tanh to relu - needs custom LSTM implementation
+            #  in Python to change activation function to mitigate negatives...
             b = torch.relu(self.l2b(b_inter)).squeeze()
         elif self.b_model == 'linear':
-            # 2.2 should be value of b under normal mobility [Kucharski et al]
+            xm = xt.clone()
             # Remove residential mobility
             # TODO: Not right spot for this. Disambiguate residential mobility..
-            xm = xt.clone()
             xm[0, 5] = 0
-            # log of the contact rate as linear combination of mobility squared
-            # b = torch.clamp(torch.exp(-self.i2b(xm)), 0)
-            # Just look at norm of mobility- this is actually very good/
-            # maybe more reliable.
+            # Just look at norm of mobility- this is actually very good/maybe
+            # more reliable.
             b = ((1 - torch.sigmoid(self.sd) * xt[0, 5]) *
                  self.q * torch.norm(xm) ** self.p)
             # b = torch.relu(self.i2b(xm)) ** self.p  # Best method so far
@@ -141,6 +140,14 @@ class SIRNetBase(ABC, torch.nn.Module):
         for t in range(time_steps):
             # compute b
             b = self._forward_b(X[t])
+            if self.summary_writer is not None:
+                # TODO: note: this will only be helpful for a single region, for
+                #  a single summary writer, for a single forecast of mobility
+                #  cases, etc.
+                self.summary_writer.add_scalar(
+                    self.__class__.__name__ + '/b',
+                    b, global_step=t
+                )
             # update the hidden state of SIR-like model
             hidden = self._forward_update_state(hidden, prev_h, b)
             # update the outputs
@@ -162,7 +169,7 @@ class SIRNet(SIRNetBase):
         hidden[:, 2] = 1.0 - self.i0
         super()._forward_init(hidden)
 
-    def _forward_update_state(self, hidden, prev_h, b):
+    def _forward_update_state(self, hidden, prev_h, b):  # noqa
         # update the hidden state SIR model @formatter:off
         drdt = self.k * prev_h[:, 0]
         hidden[:, 0] = prev_h[:, 0] + prev_h[:, 0] * b * prev_h[:, 2] - drdt  # infected
@@ -193,7 +200,7 @@ class SEIRNet(SIRNetBase):
         hidden[:, 3] = self.e0  # initial exposed
         super()._forward_init(hidden)
 
-    def _forward_update_state(self, hidden, prev_h, b):
+    def _forward_update_state(self, hidden, prev_h, b):  # noqa
         # update the hidden state SIR model (states are I R S E)
         # @formatter:off
         d1 = self.k * prev_h[:, 0]             # gamma * I  (infected people recovering)
