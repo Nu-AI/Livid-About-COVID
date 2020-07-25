@@ -1,16 +1,17 @@
 import numpy as np
 import pandas as pd
-import importlib
-import retrieve_data
+#import retrieve_data
 import torch
 import datetime as dt
 import sys
+import os
+ROOT_DIR = os.path.join(os.path.dirname(__file__), '..')
+sys.path.append(ROOT_DIR)
 
+# sys.path.insert(1,'Livid-About-COVID\SIRNet\util.py')
 
-# sys.path.insert(1, 'SIRNet')
 from SIRNet import util, trainer
-
-
+from SIRNet.data_collection import retrieve_data
 ########### ASSUMPTIONS ##############################
 ######################################################
 reporting_rate = 0.1     # Portion of cases that are actually detected
