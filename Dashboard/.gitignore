@@ -1,0 +1,9 @@
+# Geojson files
+*.geojson
+
+# Model Weight files
+*.pt
+
+# Images
+*.png
+*.jpg
