@@ -43,7 +43,6 @@ class Trainer(object):
         optimizer.step()
 
         cost = output.data.item()
-        # print('cost', cost)
         return cost
 
     def train(self, model, X, Y, iters, step_size=4000):
@@ -64,11 +63,12 @@ class Trainer(object):
                 start, end = k * batch_size, (k + 1) * batch_size
                 cost += self.iteration(model, loss, optimizer,
                                        X[:, start:end], Y[:, start:end])
-            if (i + 1) % 50 == 0:
+            if (i + 1) % 50 == 0 or (i + 1) == iters:
                 print('\nEpoch = %d, cost = %s' % (i + 1, cost / num_batches))
                 print('The model model_and_fit is: ')
                 for name, param in model.named_parameters():
-                    print('   ', name, param.data)
+                    print('   ', name, param.data,
+                          'trained={}'.format(param.requires_grad))
             # TODO: scheduler may restart learning rate if trying to load from
             #  file. Mitigation: store epoch number in filename
             scheduler.step()

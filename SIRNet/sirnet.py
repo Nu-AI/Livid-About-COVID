@@ -54,6 +54,13 @@ class SIRNetBase(ABC, torch.nn.Module):
             )
             self.i2b = torch.nn.Linear(self.input_size, 1, bias=False)
             self.i2b.weight.data = b_init
+
+            # p and q
+            self.p = Parameter(torch.tensor([[2.5]], dtype=torch.float32),
+                               requires_grad=True)
+            self.q = Parameter(torch.tensor([[0.2]], dtype=torch.float32),
+                               requires_grad=True)
+
         elif self.b_model == 'lstm':
             if lstm_hidden_size is None:
                 lstm_hidden_size = self.N_MOBILITY  # good default
@@ -177,10 +184,6 @@ class SEIRNet(SIRNetBase):
         # sigma - 5 day incubation period [Backer et al]
         self.s = Parameter(torch.tensor([[.20]], dtype=torch.float32),
                            requires_grad=update_s)
-        self.p = Parameter(torch.tensor([[2.5]], dtype=torch.float32),
-                           requires_grad=True)
-        self.q = Parameter(torch.tensor([[0.2]], dtype=torch.float32),
-                           requires_grad=True)
         # Exposed init @ time 0 (no gradient)
         self.e0 = Parameter(torch.tensor(e0, dtype=torch.float32),
                             requires_grad=False)

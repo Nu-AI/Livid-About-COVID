@@ -66,7 +66,7 @@ def load_data(params):
     mobility = np.array(mobility[:-params.delay_days])
 
     ###################### Formatting Data ######################
-    mobility[-1][-1] = 17.0  # TODO what is this
+    # mobility[-1][-1] = 17.0  # TODO what is this
     mobility = np.asarray(mobility).astype(np.float32)
     # convert percentages of change to fractions of activity
     mobility[:, :6] = 1.0 + mobility[:, :6] / 100.0
@@ -104,9 +104,6 @@ def model_and_fit(weights_name, X, Y, scale_factor, prev_cases, params):
 
     trnr = trainer.Trainer(weights_name)
     model = trnr.build_model(e0, i0)
-    # TODO: temp test...
-    trnr.train(model, X, Y,
-               iters=1, step_size=params.lr_step_size)
     trnr.train(model, X, Y,
                iters=params.n_epochs, step_size=params.lr_step_size)
 
@@ -256,8 +253,8 @@ def pipeline(params):
     else:
         county_name = params.county
 
-    weights_dir_base = pjoin(
-        WEIGHTS_DIR, params.weights_dir if params.weights_dir else timestamp)
+    weights_dir_base = (params.weights_dir if params.weights_dir else
+                        pjoin(WEIGHTS_DIR, timestamp))
     if not os.path.exists(weights_dir_base):
         os.mkdir(weights_dir_base)
 
@@ -362,6 +359,14 @@ if __name__ == '__main__':
                         help='Run mobility scenarios considering mask-wearing')
     parser.add_argument('--mask-day', default=65, type=int,
                         help='Day of mask order')
+    # TODO: future integration
+    # if disable_cuda or not torch.cuda.is_available():
+    #     device = torch.device('cpu')  # use CPU
+    # else:
+    #     device = torch.device('cuda')  # use GPU/CUDA
+    # parser.add_argument('--disable-cuda', action='store_true',
+    #                     help='Disables use of CUDA, forcing to execute on '
+    #                          'CPU even if a CUDA-capable GPU is available.')
 
     args = parser.parse_args()
 
