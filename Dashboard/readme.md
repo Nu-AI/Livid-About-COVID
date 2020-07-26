@@ -9,7 +9,7 @@ Given below is the list of instructions to run the dashboard file
   ```python
   pip install -r requirements.txt
   ```
-
++ Generate the geojson files from the `GEOJSONS` directory.
 + Run the scratch_dashboard.py file using 
   ```python
   python scratch_dashboard.py

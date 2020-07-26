@@ -4,6 +4,8 @@ dash
 cufflinks
 plotly
 plotly-express
+plotly-orca==1.2.1
+
 
 # JSON Dependency
 json
@@ -13,3 +15,6 @@ geopandas
 
 # Html response
 urllib3
+psutil
+requests
+

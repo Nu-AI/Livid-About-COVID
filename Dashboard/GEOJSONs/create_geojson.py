@@ -20,6 +20,7 @@ formatted_data = pd.read_csv("../formatted_all_data.csv",dtype={"fips":str})
 # Set the FIPS id to be consistent
 formatted_data['fips'] = formatted_data['fips'].apply(lambda x:str(x).zfill(5))
 date_list = formatted_data['date'].unique().tolist()
+print(formatted_data.date.unique().tolist()[-1])
 # Merge the json with the collected data
 merged_df= temp.merge(formatted_data,right_on='fips', left_on='id')
 
@@ -51,6 +52,7 @@ fig = px.choropleth_mapbox(formatted_data, geojson=geojson_file, locations='fips
                           )
 fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
 fig.show()
+
 print ("completed")
 # Saving the figure in the base directory
 fig.write_image("fig_test_2.png")
