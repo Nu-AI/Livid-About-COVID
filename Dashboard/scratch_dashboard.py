@@ -65,7 +65,7 @@ dates = df['date'].unique().tolist()
 actives,totals = get_model_preds(df[df['County']=='Bexar County'].reset_index())
 
 # Date list in the slider menu
-DATE_MODIFIED = [dates[i] for i in range(len(dates)) if i % 10 == 0]
+DATE_MODIFIED = [dates[::-1][i] for i in range(len(dates)) if i % 10 == 0][::-1]
 print (DATE_MODIFIED)
 # The screen layout
 app.layout = html.Div(
