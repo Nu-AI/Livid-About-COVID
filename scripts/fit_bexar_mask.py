@@ -79,7 +79,7 @@ def load_data(params):
     mobility = mobility[params.start_model:]
     cases = cases[params.start_model:]
 
-    return mobility, cases, day0, population, prev_cases
+    return mobility, cases, day0, population, prev_cases, df
 
 
 def model_and_fit(weights_name, X, Y, scale_factor, prev_cases, params,
@@ -105,7 +105,8 @@ def model_and_fit(weights_name, X, Y, scale_factor, prev_cases, params,
 
     trnr = trainer.Trainer(weights_name, summary_writer=summary_writer)
     model = trnr.build_model(e0, i0)
-    trnr.train(model, X, Y,
+    if params.train:
+        trnr.train(model, X, Y,
                iters=params.n_epochs, step_size=params.lr_step_size)
 
     return model
@@ -245,7 +246,7 @@ def pipeline(params):
     print('Loading data for {}, {}, {}...'.format(
         params.county, params.state, params.country))
 
-    mobility, cases, day0, population, prev_cases = load_data(params)
+    mobility, cases, day0, population, prev_cases, _ = load_data(params)
 
     if params.county.lower().endswith(' county'):
         county_name = params.county[:-len(' county')]
@@ -318,8 +319,13 @@ def pipeline(params):
         totals[reporting_rate] = total
 
     ############### Plotting ##########################
-    print('Begin plotting...')
-    plot(cases, actives, totals, dates, params)
+    if params.plot:
+        print('Begin plotting...')
+        plot(cases, actives, totals, dates, params)
+    # Can handle the returns in some way
+    # if params.get_predictions:
+    #     return actives, totals
+    return actives, totals
 
 
 if __name__ == '__main__':
@@ -377,6 +383,13 @@ if __name__ == '__main__':
                         help='Run mobility scenarios considering mask-wearing')
     parser.add_argument('--mask-day', default=65, type=int,
                         help='Day of mask order')
+    # New arguments
+    parser.add_argument('--train', default='store_true',
+                        help='Whether to train the model or just forecast')
+    parser.add_argument('--plot', default='store_true',
+                        help='Display the prediction plots')
+    parser.add_argument('--get-predictions', default='store_true',
+                        help='Return the active and total predictions')
     # TODO: future integration
     # if disable_cuda or not torch.cuda.is_available():
     #     device = torch.device('cpu')  # use CPU
@@ -391,6 +404,6 @@ if __name__ == '__main__':
     # Delayed imports for CLI speed
     import torch
 
-    pipeline(args)
+    _,_ = pipeline(args)
 else:
     import torch
