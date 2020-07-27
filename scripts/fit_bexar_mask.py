@@ -345,7 +345,9 @@ if __name__ == '__main__':
                         help='Store logs to that can be visualized in '
                              'tensorboard (this needs to be installed '
                              'beforehand). Run tensorboard with e.g. '
-                             '--samples_per_plugin images=1000')
+                             '--samples_per_plugin images=1000. You may also '
+                             'want to disable 30-second updates as this resets '
+                             'images slider positions.')
     parser.add_argument('--forecast-days', default=200, type=int,
                         help='Number of days to forecast')
     parser.add_argument('--reporting-rates', default=[0.05, 0.1, 0.3],

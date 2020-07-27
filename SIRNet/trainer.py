@@ -44,9 +44,10 @@ class Trainer(object):
             # states: IRSE
             import matplotlib.pyplot as plt
 
+            hx_np = util.to_numpy(hx)  # squeeze + to numpy array
             # Plot sum over all states (sanity check to ensure sum is always 1)
             f, ax = plt.subplots()
-            ax.plot(util.to_numpy(hx).sum(axis=1))
+            ax.plot(hx_np.sum(axis=1))
             ax.set_xlabel('day')
             ax.set_ylabel('count')
             ax.ticklabel_format(useOffset=False)
@@ -59,15 +60,20 @@ class Trainer(object):
             ax_running.set_ylabel('fraction')
             x_running = list(range(len(hx)))
             y2_running = 0
+            # Plot the ground truth total cases (infected + recovered)
+            ax_running.plot(util.to_numpy(y), c='black')
 
             for state, name in zip(range(len(hx)),
                                    ['infected', 'recovered', 'susceptible',
                                     'exposed']):
                 f, ax = plt.subplots()
-                hx_state = util.to_numpy(hx)[:, state]
+                hx_state = hx_np[:, state]
                 ax.plot(hx_state)
                 ax.set_xlabel('day')
                 ax.set_ylabel(name + ' count')
+                ylim_l, ylim_h = ax.get_ylim()
+                ax.set_ylim(min(ylim_l, 0) - 0.1, max(ylim_h, 1) + 0.1)
+                ax.set_yscale('symlog')
                 self.summary_writer.add_figure(self.model_name + '/' + name,
                                                f, global_step=it)
                 plt.close(f)
