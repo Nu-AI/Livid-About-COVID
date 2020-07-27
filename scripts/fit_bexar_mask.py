@@ -299,7 +299,7 @@ def pipeline(params):
 
         if params.tensorboard:
             writer = tensorboard.SummaryWriter(
-                log_dir=pjoin('run_logs', timestamp, 'report{}_{}'.format(
+                log_dir=pjoin('run_logs', timestamp, '{}_report{}'.format(
                     county_name, reporting_rate))
             )
         else:
@@ -344,7 +344,8 @@ if __name__ == '__main__':
     parser.add_argument('--tensorboard', action='store_true',
                         help='Store logs to that can be visualized in '
                              'tensorboard (this needs to be installed '
-                             'beforehand)')
+                             'beforehand). Run tensorboard with e.g. '
+                             '--samples_per_plugin images=1000')
     parser.add_argument('--forecast-days', default=200, type=int,
                         help='Number of days to forecast')
     parser.add_argument('--reporting-rates', default=[0.05, 0.1, 0.3],
