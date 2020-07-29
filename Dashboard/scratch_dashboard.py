@@ -36,13 +36,6 @@ mapbox_access_token = "pk.eyJ1IjoicGxvdGx5bWFwYm94IiwiYSI6ImNrOWJqb2F4djBnMjEzbG
 mapbox_style = "mapbox://styles/plotlymapbox/cjvprkf3t1kns1cqjxuxmwixz"
 px.set_mapbox_access_token(mapbox_access_token)
 
-# Not needed for now
-# TODO for further integration with the module
-paramdict = {}
-paramdict['country'] = 'United States'
-paramdict['states'] = ['Texas']
-paramdict['counties'] = ['Bexar County']
-
 # The dash app config
 app = dash.Dash(
     __name__,
@@ -296,8 +289,6 @@ app.layout = html.Div(
 def plot_map(selected_date, selected_mob):
     new_path = path.abspath(path.join('GEOJSONs/'))
     path_new = path.abspath(path.join(new_path, str(DATE_MODIFIED[selected_date])))
-    print(path_new, "This is the new path")
-    print(path_new, "*********", DATE_MODIFIED[selected_date])
     with open("{}.geojson".format(path_new)) as readfile:
         geojson_file = geojson.load(readfile)
 
@@ -402,7 +393,6 @@ def plot_data(selected_date, selected_percent, clickData):
         title='Total predicted cases based on the reporting rate',
         showlegend=False
     )
-    print("test_value")
     fig = go.Figure()
 
     fig = cont_error_bar(fig, active_df['date'], active_predicted_cases_0_3[int(selected_percent)],
