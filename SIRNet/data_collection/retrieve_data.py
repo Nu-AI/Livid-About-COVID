@@ -1,9 +1,10 @@
-import pandas as pd
-import numpy as np
 import warnings
 
-from . import parameters
+import numpy as np
+import pandas as pd
+
 from . import get_data
+from . import parameters
 
 warnings.filterwarnings('ignore')
 
@@ -21,7 +22,7 @@ def conflate_data(paramdict, verbose=0):
     parameters.update_params(paramdict)
     # Start with the mobility data
     if verbose:
-        print ("getting mobility data ..")
+        print("getting mobility data ..")
     df_required = get_data.get_mobility_data()
 
     country_flag = 1
@@ -66,7 +67,7 @@ def conflate_data(paramdict, verbose=0):
 
         # Retrieve the active cases and the total deaths
         if verbose:
-            print ("Getting case data for the network")
+            print("Getting case data for the network")
         county_cases_df = get_data.get_cases_data(df_required)
 
         # Add the cases and deaths to the final table
@@ -210,4 +211,5 @@ def conflate_data(paramdict, verbose=0):
     df_required = df_required[required_keys].reset_index()
     if verbose:
         print(df_required.tail(20))
+        df_required.to_csv("formatted_all_data.csv")
     return df_required

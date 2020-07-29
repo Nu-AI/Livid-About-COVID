@@ -1,3 +1,5 @@
+# Check the fit_bexar_mask file to understand the role of these parameters. These are just the params used in the argparse interface.
+
 weights_dir = None
 country = 'United States'
 state = 'Texas'
@@ -14,3 +16,6 @@ incubation_days = 5
 estimated_r0 = 2.2
 mask_modifier = 1
 mask_day = 65
+train = 0
+plot = 0
+collect_data = 0

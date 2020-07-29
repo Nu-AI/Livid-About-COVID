@@ -35,11 +35,7 @@ def load_data(params):
 
     :param params: object holding global configuration values
 
-    :return: mobility data
-    :return: cases data
-    :return: day0 - date string of first day of data
-    :return: population - the population for the region
-    :return: prev_cases - the number of cases on the day preceding day0
+    :return: df: dataframe of the collected data for the required case
     """
     ############## Simplified Data ####################
     paramdict = {
@@ -47,7 +43,25 @@ def load_data(params):
         'states': [params.state],
         'counties': [params.county]
     }
+
     df = retrieve_data.conflate_data(paramdict)
+    return df
+
+
+def process_data(params, df):
+    """
+    Loads the data used in training and forecasting according to the
+    configuration specified in `params`.
+
+    :param params: object holding global configuration values
+    :param df: dataframe of the required county
+
+    :return: mobility data
+    :return: cases data
+    :return: day0 - date string of first day of data
+    :return: population - the population for the region
+    :return: prev_cases - the number of cases on the day preceding day0
+    """
 
     mobility = df[MOBILITY_KEYS]
     cases = df['Cases']
@@ -79,7 +93,7 @@ def load_data(params):
     mobility = mobility[params.start_model:]
     cases = cases[params.start_model:]
 
-    return mobility, cases, day0, population, prev_cases, df
+    return mobility, cases, day0, population, prev_cases
 
 
 def model_and_fit(weights_name, X, Y, scale_factor, prev_cases, params,
@@ -147,6 +161,7 @@ def forecast(X, model, dates, scale_factor, params):
         print('Case: {}%'.format(case))
         print('  Max value: {}'.format(M))
         print('  Day: {}, {}'.format(idx, dates[idx]))
+
 
     return active, total
 
@@ -235,18 +250,25 @@ def plot(cases, actives, totals, dates, params):
     print('Plots saved to "{}"'.format(RESULTS_DIR))
 
 
-def pipeline(params):
+def pipeline(params, *args):
     """
     Pipeline for loading COVID-19-related data, building and fitting an instance
     of the PyTorch SIRNet model, forecasting for future dates, and plotting the
     results. Weights and figures are saved in the process.
 
     :param params: object holding global configuration values
+    :param *args: Usually a dataframe of the collected mobility and case data of the specified setting
     """
     print('Loading data for {}, {}, {}...'.format(
         params.county, params.state, params.country))
 
-    mobility, cases, day0, population, prev_cases, _ = load_data(params)
+    if params.collect_data:
+        df = load_data(params)
+    else:
+        for arg in args:
+            df = arg
+        params.county = df.County.unique().tolist()[0]
+    mobility, cases, day0, population, prev_cases =process_data(params, df)
 
     if params.county.lower().endswith(' county'):
         county_name = params.county[:-len(' county')]
@@ -317,6 +339,11 @@ def pipeline(params):
         active, total = forecast(X, model, dates, scale_factor, params)
         actives[reporting_rate] = active
         totals[reporting_rate] = total
+
+    # Additional keys for the dashboard
+    for key in totals.keys():
+        totals[key]['date'] = dates
+        actives[key]['date'] = dates
 
     ############### Plotting ##########################
     if params.plot:
@@ -393,6 +420,8 @@ if __name__ == '__main__':
                         help='Display the prediction plots')
     parser.add_argument('--get-predictions', default='store_true',
                         help='Return the active and total predictions')
+    parser.add_argument('--collect-data', default='store_true',
+                        help = 'Whether to pull the data or preload it')
     # TODO: future integration
     # if disable_cuda or not torch.cuda.is_available():
     #     device = torch.device('cpu')  # use CPU
