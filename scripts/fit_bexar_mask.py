@@ -267,6 +267,7 @@ def pipeline(params, *args):
     else:
         for arg in args:
             df = arg
+        # Updating county for the dashboard selected county
         params.county = df.County.unique().tolist()[0]
     mobility, cases, day0, population, prev_cases =process_data(params, df)
 

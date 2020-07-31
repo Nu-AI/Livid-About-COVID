@@ -1,4 +1,5 @@
-# Check the fit_bexar_mask file to understand the role of these parameters. These are just the params used in the argparse interface.
+# Check the fit_bexar_mask file to understand the role of these parameters.
+# These are the mappings of the params used in the argparse interface.
 
 weights_dir = None
 country = 'United States'

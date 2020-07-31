@@ -22,11 +22,12 @@ import dash_daq as daq
 
 basepath = "Livid-About-COVID\Dashboard"
 filepath = path.abspath(path.join('GEOJSONs'))
-print(filepath)
 
-generate_geojson(filepath)
 # Get the data from the data collection module
 formatted_data = pd.read_csv("formatted_all_data.csv", dtype={"fips": str})
+
+# Generating the GEOJSON files
+generate_geojson(filepath, formatted_data)
 
 # Appending zeros to fips ids
 formatted_data['fips'] = formatted_data['fips'].apply(lambda x: str(x).zfill(5))
@@ -44,8 +45,8 @@ app = dash.Dash(
     ],
 )
 server = app.server
-# Getting the cases from the counties
 
+# Reading the cases from the counties
 county_cases_df = pd.read_csv(urllib.request.urlopen(
     "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"))
 county_cases_df['fips'] = county_cases_df['fips'].fillna(0).astype(np.int64)
@@ -63,11 +64,12 @@ date_list = sorted(df['date'].unique().tolist())
 
 dates = df['date'].unique().tolist()
 
+# Default model predictions
 actives, totals = fit_bexar_mask.pipeline(param, df[df['County'] == 'Bexar County'].reset_index())
 
 # Date list in the slider menu
 DATE_MODIFIED = [dates[::-1][i] for i in range(len(dates)) if i % 10 == 0][::-1]
-print(DATE_MODIFIED)
+
 # The screen layout
 app.layout = html.Div(
     id='root',
@@ -281,6 +283,7 @@ app.layout = html.Div(
 )
 
 
+# The map display callback function
 @app.callback(
     Output("county_chloropleth", "figure"),
     [Input("date_slider", "value"),
@@ -325,6 +328,7 @@ def plot_map(selected_date, selected_mob):
     return fig
 
 
+# Default graph layout settings
 def set_figure_template(fig_data, fig_layout):
     fig_data[0]["marker"]["color"] = "#2cfec1"
     fig_data[0]["marker"]["opacity"] = 1
@@ -343,6 +347,7 @@ def set_figure_template(fig_data, fig_layout):
     fig_layout["margin"]["l"] = 50
 
 
+# Graph callbakc function
 @app.callback(
     [Output("slider_graph", "figure"),
      Output("slider_graph_2", 'figure'),
@@ -354,22 +359,15 @@ def set_figure_template(fig_data, fig_layout):
 def plot_data(selected_date, selected_percent, clickData):
     if clickData is not None:
         temp = clickData['points'][0]['customdata']
-        print('the selected dictionary {}'.format(temp))
         updated_county = temp[0]
     else:
         updated_county = 'Bexar County'
 
     print(selected_date, "****", dates[int(selected_date)])
 
-    if (selected_percent) == "0":
-        print("entered the condition")
-    else:
-        print("other conditions")
-
     mob_df = df[df['County'] == updated_county]
     actives, totals = fit_bexar_mask.pipeline(param, mob_df.reset_index())
     totalpred_df = pd.DataFrame.from_dict(totals[0.1])
-    # print (totalpred_df.keys(), totalpred_df[25])
     total_predicted_cases_0_05 = pd.DataFrame.from_dict(totals[0.05])
     total_predicted_cases_0_3 = pd.DataFrame.from_dict(totals[0.3])
 
@@ -419,6 +417,7 @@ def plot_data(selected_date, selected_percent, clickData):
     return fig, fig3, fig2
 
 
+# Mobility transformation plot settings in the graph
 def cont_error_bar(fig, x, y1, y2, y3, selected_percent):
     if (selected_percent == '25'):
         color = 'rgb(50, 171, 96)'
