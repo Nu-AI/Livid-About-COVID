@@ -99,8 +99,9 @@ class SIRNetBase(ABC, torch.nn.Module):
             xm[0, 5] = 0
             # Just look at norm of mobility- this is actually very good/maybe
             # more reliable.
-            b = ((1 - torch.sigmoid(self.sd) * xt[0, 5]) *
-                 self.q * torch.norm(xm) ** self.p)
+            # b = ((1 - torch.sigmoid(self.sd) * xt[0, 5]) *
+            #      self.q * torch.norm(xm) ** self.p)
+            b = self.q * torch.norm(xm)  # TODO: zach temporary thingy
             # b = torch.relu(self.i2b(xm)) ** self.p  # Best method so far
         else:
             raise RuntimeError('b_model is invalid, this should not have '
