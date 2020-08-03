@@ -290,12 +290,8 @@ def pipeline(params):
 
         #################### Training #######################
         # NOTE: this one is broken
-        # weights_name = pjoin(weights_dir_base, '{}_report{}_weights.pt'.format(
-        #     county_name, reporting_rate))  # TODO this does not fit properly...
-
-        # NOTE: this one is working but reuses weights for all reporting rates..
-        weights_name = pjoin(weights_dir_base, '{}_weights.pt'.format(
-            county_name))
+        weights_name = pjoin(weights_dir_base, '{}_report{}_weights.pt'.format(
+            county_name, reporting_rate))
 
         if params.tensorboard:
             writer = tensorboard.SummaryWriter(
