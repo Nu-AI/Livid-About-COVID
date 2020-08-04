@@ -3,11 +3,7 @@ import datetime as dt
 import os
 from os.path import join as pjoin
 
-import numpy as np
-import matplotlib.pyplot as plt
-
-############### Paths ##############################
-####################################################
+# === start paths ===
 ROOT_DIR = pjoin(os.path.dirname(__file__), '..')
 sys.path.append(ROOT_DIR)
 
@@ -18,9 +14,7 @@ if not os.path.exists(WEIGHTS_DIR):
 RESULTS_DIR = pjoin(ROOT_DIR, 'prediction_results')
 if not os.path.exists(RESULTS_DIR):
     os.mkdir(RESULTS_DIR)
-
-from SIRNet import util, trainer  # noqa
-from SIRNet.data_collection import retrieve_data  # noqa
+# === end paths ===
 
 MOBILITY_KEYS = ['Retail & recreation', 'Grocery & pharmacy', 'Parks',
                  'Transit stations', 'Workplace', 'Residential']
@@ -37,7 +31,6 @@ def load_data(params):
 
     :return: df: dataframe of the collected data for the required case
     """
-    ############## Simplified Data ####################
     paramdict = {
         'country': params.country,
         'states': [params.state],
@@ -78,14 +71,12 @@ def process_data(params, df):
     cases = np.array(cases[params.delay_days:])
     mobility = np.array(mobility[:-params.delay_days])
 
-    ###################### Formatting Data ######################
-    # mobility[-1][-1] = 17.0  # TODO what is this
     mobility = np.asarray(mobility).astype(np.float32)
     # convert percentages of change to fractions of activity
     mobility[:, :6] = 1.0 + mobility[:, :6] / 100.0
 
     # Turn the last column into 1-hot social-distancing enforcement
-    mobility[:, 5] = 0
+    mobility[:, 5] = 0  # rid residential mobility...
     if params.mask_modifier:
         mobility[params.mask_day:, 5] = 1.0
 
@@ -119,9 +110,9 @@ def model_and_fit(weights_name, X, Y, scale_factor, prev_cases, params,
 
     trnr = trainer.Trainer(weights_name, summary_writer=summary_writer)
     model = trnr.build_model(e0, i0)
-    if params.train:
+    if params.train or not os.path.exists(weights_name):
         trnr.train(model, X, Y,
-               iters=params.n_epochs, step_size=params.lr_step_size)
+                   iters=params.n_epochs, step_size=params.lr_step_size)
 
     return model
 
@@ -138,7 +129,6 @@ def forecast(X, model, dates, scale_factor, params):
 
     :return: active and total case forecasts for each mobility scenario
     """
-    ################ Forecasting #######################
     print('Begin forecasting...')
     active = {}
     total = {}
@@ -155,13 +145,12 @@ def forecast(X, model, dates, scale_factor, params):
         active[case] = s[:, 0] * scale_factor
         total[case] = (s[:, 0] + s[:, 1]) * scale_factor
 
-        ############### Reporting #########################
+        # Reporting
         M = np.max(active[case])
         idx = np.argmax(active[case])
         print('Case: {}%'.format(case))
         print('  Max value: {}'.format(M))
         print('  Day: {}, {}'.format(idx, dates[idx]))
-
 
     return active, total
 
@@ -250,31 +239,54 @@ def plot(cases, actives, totals, dates, params):
     print('Plots saved to "{}"'.format(RESULTS_DIR))
 
 
-def pipeline(params, *args):
+class _AttrDict(object):
+    def __init__(self, d=None):
+        if d:
+            self.update(d)
+
+    def update(self, d):
+        self.__dict__.update(d)
+
+
+def pipeline(params=None, **kwargs):
     """
     Pipeline for loading COVID-19-related data, building and fitting an instance
     of the PyTorch SIRNet model, forecasting for future dates, and plotting the
     results. Weights and figures are saved in the process.
 
     :param params: object holding global configuration values
-    :param *args: Usually a dataframe of the collected mobility and case data of the specified setting
+    :param kwargs: keyword arguments that override values in params
+
+    :return: forecast actives and totals
     """
-    print('Loading data for {}, {}, {}...'.format(
-        params.county, params.state, params.country))
+    if params:
+        # Combine two sources of parameters, skipping `params` attributes
+        # starting with '_'
+        params = _AttrDict(
+            dict(filter(lambda kv: not kv[0].startswith('_'),  # noqa
+                        vars(params).items()))
+        )
+    params.update(kwargs)
 
-    if params.collect_data:
+    data_action = 'Loading'
+    dump_config = True
+    if not params.data:
         df = load_data(params)
+    elif isinstance(params.data, str):
+        df = pd.read_csv(params.data)
     else:
-        for arg in args:
-            df = arg
-        # Updating county for the dashboard selected county
-        params.county = df.County.unique().tolist()[0]
-    mobility, cases, day0, population, prev_cases =process_data(params, df)
+        data_action = 'Using given'
+        df = params.data
+        dump_config = False
 
-    if params.county.lower().endswith(' county'):
-        county_name = params.county[:-len(' county')]
-    else:
-        county_name = params.county
+    print('{} data for {}, {}, {}...'.format(
+        data_action, params.county, params.state, params.country))
+
+    mobility, cases, day0, population, prev_cases = process_data(params, df)
+
+    county_name = params.county
+    if county_name.lower().endswith(' county'):
+        county_name = county_name[:-len(' county')]
 
     weights_dir_base = (params.weights_dir if params.weights_dir else
                         pjoin(WEIGHTS_DIR, timestamp))
@@ -312,18 +324,14 @@ def pipeline(params, *args):
         X = X.reshape(X.shape[0], 1, X.shape[1])  # time x batch x channels
         Y = Y.reshape(Y.shape[0], 1, 1)  # time x batch x channels
 
-        #################### Training #######################
-        # NOTE: this one is broken
+        # Training
         weights_name = pjoin(weights_dir_base, '{}_report{}_weights.pt'.format(
             county_name, reporting_rate))
 
-        if params.tensorboard:
-            writer = tensorboard.SummaryWriter(
-                log_dir=pjoin('run_logs', timestamp, '{}_report{}'.format(
-                    county_name, reporting_rate))
-            )
-        else:
-            writer = None
+        writer = tensorboard.SummaryWriter(
+            log_dir=pjoin('run_logs', timestamp, '{}_report{}'.format(
+                county_name, reporting_rate))
+        ) if params.tensorboard else None
 
         model = model_and_fit(weights_name, X, Y, scale_factor, prev_cases,
                               params, summary_writer=writer)
@@ -332,7 +340,7 @@ def pipeline(params, *args):
             writer.close()
         print('Done training.')
 
-        ################ Forecasting #######################
+        # Forecasting
         active, total = forecast(X, model, dates, scale_factor, params)
         actives[reporting_rate] = active
         totals[reporting_rate] = total
@@ -342,13 +350,18 @@ def pipeline(params, *args):
         totals[key]['date'] = dates
         actives[key]['date'] = dates
 
-    ############### Plotting ##########################
-    if params.plot:
+    # Dump parameters to saved model directory
+    if dump_config:
+        with open(pjoin(weights_dir_base, 'config_' + timestamp + '.json'),
+                  'w') as f:
+            json.dump(vars(params), f, indent=2)
+    else:
+        print('Not dumping config to JSON.')
+
+    # Plot
+    if not params.no_plot:
         print('Begin plotting...')
         plot(cases, actives, totals, dates, params)
-    # Can handle the returns in some way
-    # if params.get_predictions:
-    #     return actives, totals
     return actives, totals
 
 
@@ -361,78 +374,105 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
-    parser.add_argument('--weights-dir', default=None,
-                        help='Optional directory to load old weight or store '
-                             'newly trained ones.')
-    parser.add_argument('--country', default='United States',
-                        help='The country to look for state and county in data '
-                             'loading')
-    parser.add_argument('--state', default='Texas',
-                        help='The state to look for county in data loading')
-    parser.add_argument('--county', default='Bexar County',
-                        help='The county used in data loading')
-    parser.add_argument('--tensorboard', action='store_true',
-                        help='Store logs to that can be visualized in '
-                             'tensorboard (this needs to be installed '
-                             'beforehand). Run tensorboard with e.g. '
-                             '--samples_per_plugin images=1000. You may also '
-                             'want to disable 30-second updates as this resets '
-                             'images slider positions.')
-    parser.add_argument('--forecast-days', default=200, type=int,
-                        help='Number of days to forecast')
-    parser.add_argument('--reporting-rates', default=[0.05, 0.1, 0.3],
-                        type=float, nargs='+',
-                        help='Portion of cases that are actually detected. '
-                             'Multiple space-separated values can be passed in '
-                             'here.')
-    parser.add_argument('--mobility-cases', default=[25, 50, 75, 100],
-                        type=float, nargs='+',
-                        help='Percentage of mobility assumed in forecasts. '
-                             'Multiple space-separated values can be passed in '
-                             'here. Note that 4 is the maximum number of cases'
-                             'supported.')
-    parser.add_argument('--n-epochs', default=200, type=int,
-                        help='Number of training epochs')
-    parser.add_argument('--lr-step-size', default=4000, type=int,
-                        help='Learning rate decay step size')
-    parser.add_argument('--delay-days', default=10, type=int,
-                        help='Days between becoming infected / positive '
-                             'confirmation (due to incubation period / testing '
-                             'latency')
-    parser.add_argument('--start-model', default=23, type=int,
-                        help='The day where we begin our fit (after delay '
-                             'days)')
-    parser.add_argument('--incubation-days', default=5, type=int,
-                        help='Incubation period, default from [Backer et al]')
-    parser.add_argument('--estimated-r0', default=2.2, type=float,
-                        help='R0 estimated in literature')
-    parser.add_argument('--mask-modifier', action='store_true',
-                        help='Run mobility scenarios considering mask-wearing')
-    parser.add_argument('--mask-day', default=65, type=int,
-                        help='Day of mask order')
-    # New arguments
-    parser.add_argument('--train', default='store_true',
-                        help='Whether to train the model or just forecast')
-    parser.add_argument('--plot', default='store_true',
-                        help='Display the prediction plots')
-    parser.add_argument('--get-predictions', default='store_true',
-                        help='Return the active and total predictions')
-    parser.add_argument('--collect-data', default='store_true',
-                        help = 'Whether to pull the data or preload it')
-    # TODO: future integration
+    g_region = parser.add_argument_group('Region Selection')
+    g_region.add_argument(
+        '--country', default='United States',
+        help='The country to look for state and county in data loading')
+    g_region.add_argument(
+        '--state', default='Texas',
+        help='The state to look for county in data loading')
+    g_region.add_argument(
+        '--county', default='Bexar County',
+        help='The county used in data loading')
+
+    g_scenario = parser.add_argument_group('Scenario Options')
+    g_scenario.add_argument(
+        '--forecast-days', default=200, type=int,
+        help='Number of days to forecast')
+    g_scenario.add_argument(
+        '--reporting-rates', default=[0.05, 0.1, 0.3],
+        type=float, nargs='+',
+        help='Portion of cases that are actually detected. Multiple '
+             'space-separated values can be passed in here.')
+    g_scenario.add_argument(
+        '--mobility-cases', default=[25, 50, 75, 100],
+        type=float, nargs='+',
+        help='Percentage of mobility assumed in forecasts. Multiple '
+             'space-separated values can be passed in here. Note that 4 is the '
+             'maximum number of cases supported.')
+    g_scenario.add_argument(
+        '--mask-modifier', action='store_true',
+        help='Run mobility scenarios considering mask-wearing')
+    g_scenario.add_argument(
+        '--mask-day', default=65, type=int,
+        help='Day of mask order')
+
+    g_model = parser.add_argument_group('Model Options')
+    g_model.add_argument(
+        '--weights-dir', default=None,
+        help='Optional directory to load old weight or store newly trained '
+             'ones.')
+    g_model.add_argument(
+        '--train', action='store_true',
+        help='Whether to train the model. If `weights-dir` does not exist, '
+             'then this option is ignored. Use to continue training from '
+             'previously saved weights.')
+    g_model.add_argument(
+        '--n-epochs', default=200, type=int,
+        help='Number of training epochs')
+    g_model.add_argument(
+        '--lr-step-size', default=4000, type=int,
+        help='Learning rate decay step size')
+    g_model.add_argument(
+        '--delay-days', default=10, type=int,
+        help='Days between becoming infected / positive confirmation (due to '
+             'incubation period/testing latency')
+    g_model.add_argument(
+        '--start-model', default=23, type=int,
+        help='The day where we begin our fit (after delay days)')
+    g_model.add_argument(
+        '--incubation-days', default=5, type=int,
+        help='Incubation period, default from [Backer et al]')
+    g_model.add_argument(
+        '--estimated-r0', default=2.2, type=float,
+        help='R0 estimated in literature')
+
+    g_misc = parser.add_argument_group('Misc. Options')
+    g_misc.add_argument(
+        '--tensorboard', action='store_true',
+        help='Store logs to that can be visualized in tensorboard (this needs '
+             'to be installed beforehand). Run tensorboard with e.g. '
+             '--samples_per_plugin images=1000. You may also want to disable '
+             '30-second updates as this resets images slider positions.')
+    g_misc.add_argument(
+        '--no-plot', action='store_true',
+        help='Do not display and save the prediction plots.')
+    g_misc.add_argument(
+        '--data', default=None,
+        help='Alternative data path rather than automatically pulling data.')
+    # TODO: for future integration
+    # parser.add_argument(
+    #   '--disable-cuda', action='store_true',
+    #    help='Disables use of CUDA, forcing to execute on CPU even if a '
+    #         'CUDA-capable GPU is available.')
     # if disable_cuda or not torch.cuda.is_available():
     #     device = torch.device('cpu')  # use CPU
     # else:
     #     device = torch.device('cuda')  # use GPU/CUDA
-    # parser.add_argument('--disable-cuda', action='store_true',
-    #                     help='Disables use of CUDA, forcing to execute on '
-    #                          'CPU even if a CUDA-capable GPU is available.')
 
+    # Parse provided arguments
     args = parser.parse_args()
 
-    # Delayed imports for CLI speed
-    import torch
+# Delayed imports for CLI speed (used regardless of __main__)
+import json  # noqa
 
-    _,_ = pipeline(args)
-else:
-    import torch
+import numpy as np  # noqa
+import pandas as pd  # noqa
+import matplotlib.pyplot as plt  # noqa
+
+import torch  # noqa
+from SIRNet import util, trainer  # noqa
+from SIRNet.data_collection import retrieve_data  # noqa
+
+if __name__ == '__main__':
+    pipeline(args)  # noqa
