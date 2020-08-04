@@ -1,6 +1,6 @@
 Instructions to generate the geojson files
 
-+ If you have conda environment, then install these packages in the conda environment.
++ If you have a conda environment, then install these packages in the conda environment.
   ```
   conda install -c plotly plotly-orca==1.2.1 psutil requests
   ```
