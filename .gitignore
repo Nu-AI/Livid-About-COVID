@@ -9,6 +9,7 @@ Dashboard/GEOJSONs/
 /*.npy
 
 # Local & generated files
+*.json
 .idea/
 archive/
 model.png
