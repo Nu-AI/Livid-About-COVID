@@ -4,6 +4,7 @@ import urllib.request
 from os import path
 
 import dash
+import cufflinks   # Please do not remove the import to cufflinks
 import dash_core_components as dcc
 import dash_html_components as html
 import geojson
@@ -402,7 +403,6 @@ def plot_data(selected_date, selected_percent, clickData):
         title='Active predicted cases based on the reporting rate',
         showlegend=False
     )
-
     fig2 = mob_df.iplot(asFigure=True, title="Average Mobility over time")
     fig2_layout = fig2["layout"]
     fig2_data = fig2["data"]
@@ -428,7 +428,6 @@ def cont_error_bar(fig, x, y1, y2, y3, selected_percent):
     elif (selected_percent == '75'):
         color = 'rgb(255, 153, 51)'
         fillcolor = 'rgba(255, 153, 51, 0.2)'
-
     else:
         color = 'rgb(219, 64, 82)'
         fillcolor = 'rgba(219, 64, 82, 0.2)'
