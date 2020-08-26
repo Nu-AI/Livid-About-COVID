@@ -18,5 +18,4 @@ estimated_r0 = 2.2
 mask_modifier = 1
 mask_day = 65
 train = 0
-plot = 0
-collect_data = 0
+no_plot = 1

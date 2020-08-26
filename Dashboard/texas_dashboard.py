@@ -1,31 +1,33 @@
-import os
 import sys
 import urllib.request
+import os
 from os import path
+
+import numpy as np
+import pandas as pd
 
 import dash
 import cufflinks   # Please do not remove the import to cufflinks
 import dash_core_components as dcc
 import dash_html_components as html
+from dash.dependencies import Input, Output
+import dash_daq as daq
 import geojson
-import numpy as np
-import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from GEOJSONs.create_geojson import generate_geojson
-from dash.dependencies import Input, Output
 
-ROOT_DIR = os.path.join(os.path.dirname(__file__), '..')
+basepath = os.path.join(os.path.dirname(__file__))
+ROOT_DIR = os.path.join(basepath, '..')
 sys.path.append(ROOT_DIR)
-import parameters as param
+from . import parameters as param
 from scripts import fit_bexar_mask
-import dash_daq as daq
+from Dashboard.GEOJSONs.create_geojson import generate_geojson
 
-basepath = "Livid-About-COVID\Dashboard"
+basepath = os.path.join(ROOT_DIR, 'Dashboard')
 filepath = path.abspath(path.join('GEOJSONs'))
 
 # Get the data from the data collection module
-formatted_data = pd.read_csv("formatted_all_data.csv", dtype={"fips": str})
+formatted_data = pd.read_csv('formatted_all_data.csv', dtype={'fips': str})
 
 # Generating the GEOJSON files
 generate_geojson(filepath, formatted_data)
@@ -34,28 +36,29 @@ generate_geojson(filepath, formatted_data)
 formatted_data['fips'] = formatted_data['fips'].apply(lambda x: str(x).zfill(5))
 
 # Setting the mapbox details
-mapbox_access_token = "pk.eyJ1IjoicGxvdGx5bWFwYm94IiwiYSI6ImNrOWJqb2F4djBnMjEzbG50amg0dnJieG4ifQ.Zme1-Uzoi75IaFbieBDl3A"
-mapbox_style = "mapbox://styles/plotlymapbox/cjvprkf3t1kns1cqjxuxmwixz"
+mapbox_access_token = 'pk.eyJ1IjoicGxvdGx5bWFwYm94IiwiYSI6ImNrOWJqb2F4djBnMjEzbG50amg0dnJieG4ifQ.Zme1-Uzoi75IaFbieBDl3A'
+mapbox_style = 'mapbox://styles/plotlymapbox/cjvprkf3t1kns1cqjxuxmwixz'
 px.set_mapbox_access_token(mapbox_access_token)
 
 # The dash app config
 app = dash.Dash(
     __name__,
     meta_tags=[
-        {"name": "viewport", "content": "width=device-width, initial-scale=1.0"}
+        {'name': 'viewport', 'content': 'width=device-width, initial-scale=1.0'}
     ],
 )
 server = app.server
 
 # Reading the cases from the counties
 county_cases_df = pd.read_csv(urllib.request.urlopen(
-    "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"))
+    'https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv'))
 county_cases_df['fips'] = county_cases_df['fips'].fillna(0).astype(np.int64)
-county_cases_df['fips'] = county_cases_df['fips'].apply(lambda x: str(x).zfill(5))
+county_cases_df['fips'] = county_cases_df['fips'].apply(
+    lambda x: str(x).zfill(5))
 
 # Getting the total number of cases in the state ( Texas for this case)
 state_cases_df = pd.read_csv(urllib.request.urlopen(
-    "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv"))
+    'https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv'))
 
 texas_df = state_cases_df[state_cases_df.state == 'Texas']
 
@@ -66,7 +69,9 @@ date_list = sorted(df['date'].unique().tolist())
 dates = df['date'].unique().tolist()
 
 # Default model predictions
-actives, totals = fit_bexar_mask.pipeline(param, df[df['County'] == 'Bexar County'].reset_index())
+actives, totals = fit_bexar_mask.pipeline(
+    param, data=df[df['County'] == 'Bexar County'].reset_index(),
+    county='Bexar County')
 
 # Date list in the slider menu
 DATE_MODIFIED = [dates[::-1][i] for i in range(len(dates)) if i % 10 == 0][::-1]
@@ -154,8 +159,11 @@ app.layout = html.Div(
                                     value=0,
                                     marks={
                                         str(date): {
-                                            "label": "-".join(str(DATE_MODIFIED[date]).split("-")[1:]),
-                                            "style": {"color": "#7fafdf", 'fontSize': 16},
+                                            "label": "-".join(
+                                                str(DATE_MODIFIED[date]).split(
+                                                    "-")[1:]),
+                                            "style": {"color": "#7fafdf",
+                                                      'fontSize': 16},
                                         } for date in range(len(DATE_MODIFIED))
 
                                     },
@@ -174,7 +182,8 @@ app.layout = html.Div(
                                 html.P
                                     (
                                     "Heatmap of mobility \
-                                    in Texas counties on selected date {0}".format(DATE_MODIFIED[0]),
+                                    in Texas counties on selected date {0}".format(
+                                        DATE_MODIFIED[0]),
                                     id="heatmap-title",
                                 ),
                                 dcc.Dropdown
@@ -250,7 +259,8 @@ app.layout = html.Div(
                                 {'label': '100%', 'value': '100'},
                             ],
                             value='25',
-                            labelStyle={'display': 'inline-block', 'margin': '5px'}
+                            labelStyle={'display': 'inline-block',
+                                        'margin': '5px'}
                         ),
                         dcc.Graph
                         (id='slider_graph',
@@ -286,14 +296,15 @@ app.layout = html.Div(
 
 # The map display callback function
 @app.callback(
-    Output("county_chloropleth", "figure"),
-    [Input("date_slider", "value"),
-     Input("chart-dropdown", "value")]
+    Output('county_chloropleth', 'figure'),
+    [Input('date_slider', 'value'),
+     Input('chart-dropdown', 'value')]
 )
 def plot_map(selected_date, selected_mob):
     new_path = path.abspath(path.join('GEOJSONs/'))
-    path_new = path.abspath(path.join(new_path, str(DATE_MODIFIED[selected_date])))
-    with open("{}.geojson".format(path_new)) as readfile:
+    path_new = path.abspath(
+        path.join(new_path, str(DATE_MODIFIED[selected_date])))
+    with open('{}.geojson'.format(path_new)) as readfile:
         geojson_file = geojson.load(readfile)
 
     px.set_mapbox_access_token(mapbox_access_token)
@@ -301,12 +312,13 @@ def plot_map(selected_date, selected_mob):
     target = str(selected_mob)
     data_copy = data_copy[['County', target, 'fips']]
 
-    fig = px.choropleth_mapbox(data_copy, geojson=geojson_file, locations='fips', color=target,
-                               featureidkey="properties.id",
-                               color_continuous_scale="Inferno",
+    fig = px.choropleth_mapbox(data_copy, geojson=geojson_file,
+                               locations='fips', color=target,
+                               featureidkey='properties.id',
+                               color_continuous_scale='Inferno',
                                mapbox_style=mapbox_style,
                                hover_data=['County', target, 'fips'],
-                               zoom=4.8, center={"lat": 31.3, "lon": -99.2},
+                               zoom=4.8, center={'lat': 31.3, 'lon': -99.2},
                                opacity=0.5,
                                labels={'Cases': 'Number of cases'}
                                )
@@ -319,11 +331,11 @@ def plot_map(selected_date, selected_mob):
             pad=2
         ),
         font=dict(
-            family="Courier New, monospace",
+            family='Courier New, monospace',
             size=18,
-            color="#7f7f7f"
+            color='#7f7f7f'
         ),
-        paper_bgcolor="#252e3f",
+        paper_bgcolor='#252e3f',
         clickmode='event+select'
     )
     return fig
@@ -331,31 +343,31 @@ def plot_map(selected_date, selected_mob):
 
 # Default graph layout settings
 def set_figure_template(fig_data, fig_layout):
-    fig_data[0]["marker"]["color"] = "#2cfec1"
-    fig_data[0]["marker"]["opacity"] = 1
-    fig_data[0]["marker"]["line"]["width"] = 0
-    fig_layout["paper_bgcolor"] = "#1f2630"
-    fig_layout["plot_bgcolor"] = "#1f2630"
-    fig_layout["font"]["color"] = "#2cfec1"
-    fig_layout["title"]["font"]["color"] = "#2cfec1"
-    fig_layout["xaxis"]["tickfont"]["color"] = "#2cfec1"
-    fig_layout["yaxis"]["tickfont"]["color"] = "#2cfec1"
-    fig_layout["xaxis"]["gridcolor"] = "#5b5b5b"
-    fig_layout["yaxis"]["gridcolor"] = "#5b5b5b"
-    fig_layout["margin"]["t"] = 75
-    fig_layout["margin"]["r"] = 50
-    fig_layout["margin"]["b"] = 100
-    fig_layout["margin"]["l"] = 50
+    fig_data[0]['marker']['color'] = '#2cfec1'
+    fig_data[0]['marker']['opacity'] = 1
+    fig_data[0]['marker']['line']['width'] = 0
+    fig_layout['paper_bgcolor'] = '#1f2630'
+    fig_layout['plot_bgcolor'] = '#1f2630'
+    fig_layout['font']['color'] = '#2cfec1'
+    fig_layout['title']['font']['color'] = '#2cfec1'
+    fig_layout['xaxis']['tickfont']['color'] = '#2cfec1'
+    fig_layout['yaxis']['tickfont']['color'] = '#2cfec1'
+    fig_layout['xaxis']['gridcolor'] = '#5b5b5b'
+    fig_layout['yaxis']['gridcolor'] = '#5b5b5b'
+    fig_layout['margin']['t'] = 75
+    fig_layout['margin']['r'] = 50
+    fig_layout['margin']['b'] = 100
+    fig_layout['margin']['l'] = 50
 
 
-# Graph callbakc function
+# Graph callback function
 @app.callback(
-    [Output("slider_graph", "figure"),
-     Output("slider_graph_2", 'figure'),
-     Output("slider_graph_3", 'figure')],
-    [Input("date_slider", "value"),
-     Input("Radio_block1", "value"),
-     Input("county_chloropleth", "clickData")]
+    [Output('slider_graph', 'figure'),
+     Output('slider_graph_2', 'figure'),
+     Output('slider_graph_3', 'figure')],
+    [Input('date_slider', 'value'),
+     Input('Radio_block1', 'value'),
+     Input('county_chloropleth', 'clickData')]
 )
 def plot_data(selected_date, selected_percent, clickData):
     if clickData is not None:
@@ -364,10 +376,13 @@ def plot_data(selected_date, selected_percent, clickData):
     else:
         updated_county = 'Bexar County'
 
-    print(selected_date, "****", dates[int(selected_date)])
+    print(selected_date, '****', dates[int(selected_date)])
 
     mob_df = df[df['County'] == updated_county]
-    actives, totals = fit_bexar_mask.pipeline(param, mob_df.reset_index())
+    mob_df.reset_index(drop=True, inplace=True)
+    county = mob_df.County.unique().tolist()[0]  # TODO(tmp)
+    actives, totals = fit_bexar_mask.pipeline(param, data=mob_df,
+                                              county=county)
     totalpred_df = pd.DataFrame.from_dict(totals[0.1])
     total_predicted_cases_0_05 = pd.DataFrame.from_dict(totals[0.05])
     total_predicted_cases_0_3 = pd.DataFrame.from_dict(totals[0.3])
@@ -377,25 +392,28 @@ def plot_data(selected_date, selected_percent, clickData):
     active_predicted_cases_0_3 = pd.DataFrame.from_dict(actives[0.3])
 
     mob_df = mob_df[['date', 'Retail & recreation',
-                     'Grocery & pharmacy', 'Parks', 'Transit stations', 'Workplace', 'Residential']]
-    mob_df.reset_index(drop=True, inplace=True)
-
+                     'Grocery & pharmacy', 'Parks', 'Transit stations',
+                     'Workplace', 'Residential']]
     mob_df = mob_df.set_index('date')
 
     fig3 = go.Figure()
-    fig3 = cont_error_bar(fig3, totalpred_df['date'], total_predicted_cases_0_3[int(selected_percent)],
-                          totalpred_df[int(selected_percent)], total_predicted_cases_0_05[int(selected_percent)],
+    fig3 = cont_error_bar(fig3, totalpred_df['date'],
+                          total_predicted_cases_0_3[int(selected_percent)],
+                          totalpred_df[int(selected_percent)],
+                          total_predicted_cases_0_05[int(selected_percent)],
                           selected_percent)
-    fig3_layout = fig3["layout"]
-    fig3_data = fig3["data"]
+    fig3_layout = fig3['layout']
+    fig3_data = fig3['data']
     fig3.update_layout(
         title='Total predicted cases based on the reporting rate',
         showlegend=False
     )
     fig = go.Figure()
 
-    fig = cont_error_bar(fig, active_df['date'], active_predicted_cases_0_3[int(selected_percent)],
-                         active_df[int(selected_percent)], active_predicted_cases_0_05[int(selected_percent)],
+    fig = cont_error_bar(fig, active_df['date'],
+                         active_predicted_cases_0_3[int(selected_percent)],
+                         active_df[int(selected_percent)],
+                         active_predicted_cases_0_05[int(selected_percent)],
                          selected_percent)
     fig_layout = fig["layout"]
     fig_data = fig["data"]
@@ -406,9 +424,10 @@ def plot_data(selected_date, selected_percent, clickData):
     fig2 = mob_df.iplot(asFigure=True, title="Average Mobility over time")
     fig2_layout = fig2["layout"]
     fig2_data = fig2["data"]
+
     fig2.update_layout(
-        title="Mobility over time in {}".format(updated_county),
-        legend=dict(bgcolor="#1f2630")
+        title='Mobility over time in {}'.format(updated_county),
+        legend=dict(bgcolor='#1f2630')
     )
     set_figure_template(fig_data, fig_layout)
     set_figure_template(fig2_data, fig2_layout)
@@ -419,13 +438,13 @@ def plot_data(selected_date, selected_percent, clickData):
 
 # Mobility transformation plot settings in the graph
 def cont_error_bar(fig, x, y1, y2, y3, selected_percent):
-    if (selected_percent == '25'):
+    if selected_percent == '25':
         color = 'rgb(50, 171, 96)'
         fillcolor = 'rgba(50, 171, 96,0.2)'
-    elif (selected_percent == '50'):
+    elif selected_percent == '50':
         color = 'rgb(55, 128, 191)'
         fillcolor = 'rgba(55, 128, 191,0.2)'
-    elif (selected_percent == '75'):
+    elif selected_percent == '75':
         color = 'rgb(255, 153, 51)'
         fillcolor = 'rgba(255, 153, 51, 0.2)'
     else:
@@ -434,7 +453,7 @@ def cont_error_bar(fig, x, y1, y2, y3, selected_percent):
 
     fig.add_trace(go.Scatter(x=x,
                              y=y1,
-                             marker=dict(color="#444"),
+                             marker=dict(color='#444'),
                              line=dict(width=0),
                              fillcolor=fillcolor,
                              ))
@@ -448,15 +467,14 @@ def cont_error_bar(fig, x, y1, y2, y3, selected_percent):
 
     fig.add_trace(go.Scatter(x=x,
                              y=y3,
-                             marker=dict(color="#444"),
+                             marker=dict(color='#444'),
                              line=dict(width=0),
                              mode='lines',
                              fillcolor=fillcolor,
                              fill='tonexty'
                              ))
-
     return fig
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run_server(debug=True, use_reloader=False)

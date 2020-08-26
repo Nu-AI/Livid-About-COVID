@@ -94,14 +94,11 @@ class SIRNetBase(ABC, torch.nn.Module):
             b = torch.relu(self.l2b(b_inter)).squeeze()
         elif self.b_model == 'linear':
             xm = xt.clone()
-            # Remove residential mobility
-            # TODO: Not right spot for this. Disambiguate residential mobility..
-            xm[0, 5] = 0
-            # Just look at norm of mobility- this is actually very good/maybe
-            # more reliable.
-            b = ((1 - torch.sigmoid(self.sd) * xt[0, 5]) *
-                 self.q * torch.norm(xm) ** self.p)
-            # b = torch.relu(self.i2b(xm)) ** self.p  # Best method so far
+            # Just look at norm of mobility
+            # b = ((1 - torch.sigmoid(self.sd) * xt[0, 5]) *
+            #      self.q * torch.norm(xm) ** self.p)
+            b = self.q * torch.norm(xm)
+            # b = torch.relu(self.i2b(xm)) ** self.p
         else:
             raise RuntimeError('b_model is invalid, this should not have '
                                'happened')  # earlier check in _make_b_model()
