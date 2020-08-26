@@ -1,20 +1,12 @@
-# Dash Dependencies
-dash
-cufflinks
-plotly
-plotly-express
-plotly-orca==1.2.1
-dash-daq
-
-
-# JSON Dependency
-json
-geojson
-geopandas
-
-
-# Html response
-urllib3
-psutil
-requests
-
+pandas==1.0.3
+plotly==4.9.0
+cufflinks==0.17.3
+dash_core_components==1.10.0
+geojson==2.5.0
+dash_daq==0.5.0
+dash==1.12.0
+dash_html_components==1.0.3
+geopandas==0.7.0
+Dashboard==0.0.6
+numpy==1.19.1
+scripts==2.0
