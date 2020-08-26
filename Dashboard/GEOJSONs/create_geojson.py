@@ -1,3 +1,4 @@
+import os
 import geopandas as gpd
 import pandas as pd
 
@@ -10,12 +11,13 @@ mapbox_access_token = "pk.eyJ1IjoicGxvdGx5bWFwYm94IiwiYSI6ImNrOWJqb2F4djBnMjEzbG
 
 def generate_geojson(path, formatted_data):
     # Reading the us-counties json file
-    temp = gpd.read_file("{}\\us-counties.json".format(path))
+    temp = gpd.read_file(os.path.join(path, 'us-counties.json'))
     # Append the FIPS with previous zeros
     temp['id'] = temp['id'].apply(lambda x: x.zfill(5))
 
     # Set the FIPS id to be consistent
-    formatted_data['fips'] = formatted_data['fips'].apply(lambda x: str(x).zfill(5))
+    formatted_data['fips'] = formatted_data['fips'].apply(
+        lambda x: str(x).zfill(5))
     date_list = formatted_data['date'].unique().tolist()
     print(formatted_data.date.unique().tolist()[-1])
     # Merge the json with the collected data
@@ -26,9 +28,11 @@ def generate_geojson(path, formatted_data):
         layer_slice = merged_df[merged_df['date'] == date]
 
         # Dropping unused columns
-        layer_slice = layer_slice.drop(['Residential', 'Unnamed: 0', 'Index'], axis=1)
+        layer_slice = layer_slice.drop(['Residential', 'Unnamed: 0', 'Index'],
+                                       axis=1)
 
         # Saving the file
-        layer_slice.to_file("{}\\{}.geojson".format(path, date), driver='GeoJSON')
+        layer_slice.to_file(os.path.join(path, '{}.geojson'.format(date)),
+                            driver='GeoJSON')
 
     print("Finished geojson generation...")

@@ -3,12 +3,15 @@ dash
 cufflinks
 plotly
 plotly-express
-plotly-orca==1.2.1
+#plotly-orca==1.2.1
+# Install in non-conda as:
+# wget https://github.com/plotly/orca/releases/download/v1.2.1/orca-1.2.1-x86_64.AppImage -O orca
+# chmod +x orca
+# mv </usr/bin/ or venv/bin depending on what you're doing>
 dash-daq
 
 
-# JSON Dependency
-json
+# JSON Dependencies
 geojson
 geopandas
 
@@ -18,3 +21,9 @@ urllib3
 psutil
 requests
 
+# mpl
+matplotlib
+pyqt5
+
+# model deps
+torch

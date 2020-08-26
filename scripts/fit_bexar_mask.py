@@ -270,7 +270,7 @@ def pipeline(params=None, **kwargs):
 
     data_action = 'Loading'
     dump_config = True
-    if not params.data:
+    if params.data is None:
         df = load_data(params)
     elif isinstance(params.data, str):
         df = pd.read_csv(params.data)

@@ -18,12 +18,12 @@ import plotly.graph_objects as go
 basepath = os.path.join(os.path.dirname(__file__))
 ROOT_DIR = os.path.join(basepath, '..')
 sys.path.append(ROOT_DIR)
-from . import parameters as param
+import parameters as param
 from scripts import fit_bexar_mask
 from Dashboard.GEOJSONs.create_geojson import generate_geojson
 
 basepath = os.path.join(ROOT_DIR, 'Dashboard')
-filepath = path.abspath(path.join('GEOJSONs'))
+filepath = path.abspath(path.join(basepath, 'GEOJSONs'))
 
 # Get the data from the data collection module
 formatted_data = pd.read_csv('formatted_all_data.csv', dtype={'fips': str})
@@ -300,7 +300,7 @@ app.layout = html.Div(
      Input('chart-dropdown', 'value')]
 )
 def plot_map(selected_date, selected_mob):
-    new_path = path.abspath(path.join('GEOJSONs/'))
+    new_path = path.abspath(path.join('GEOJSONs'))
     path_new = path.abspath(
         path.join(new_path, str(DATE_MODIFIED[selected_date])))
     with open('{}.geojson'.format(path_new)) as readfile:

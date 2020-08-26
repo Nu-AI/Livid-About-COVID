@@ -1,7 +1,8 @@
 # Check the fit_bexar_mask file to understand the role of these parameters.
 # These are the mappings of the params used in the argparse interface.
+import os.path as _p
 
-weights_dir = None
+weights_dir = _p.realpath(_p.join(_p.dirname(__file__), 'model_weights'))
 country = 'United States'
 state = 'Texas'
 county = 'Bexar County'
