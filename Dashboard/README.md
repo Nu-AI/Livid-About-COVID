@@ -9,14 +9,13 @@ Given below is the list of instructions to run the dashboard file
   ```python
   pip install -r requirements.txt
   ```
-+ Generate the geojson files from the `GEOJSONS` directory.
 + Generate the state level data from the `get_state_data.py` to create the `formatted_all_data.csv`.
     * This generated data will be used to populate the dashboard and is necessary to be executed before 
     running the dashboard.
     
-+ Run the `scratch_dashboard.py` file using 
++ Run the `texas_dashboard.py` file using 
   ```python
-  python scratch_dashboard.py
+  python texas_dashboard.py
   ```
 + This will open a port on localhost and display the address `http://127.0.0.1:8050/` where you can click and access the dashboard.
 
