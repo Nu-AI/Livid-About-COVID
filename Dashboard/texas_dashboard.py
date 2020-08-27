@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 import dash
+import cufflinks   # Please do not remove the import to cufflinks
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
@@ -420,10 +421,10 @@ def plot_data(selected_date, selected_percent, clickData):
         title='Active predicted cases based on the reporting rate',
         showlegend=False
     )
+    fig2 = mob_df.iplot(asFigure=True, title="Average Mobility over time")
+    fig2_layout = fig2["layout"]
+    fig2_data = fig2["data"]
 
-    fig2 = mob_df.iplot(asFigure=True, title='Average Mobility over time')
-    fig2_layout = fig2['layout']
-    fig2_data = fig2['data']
     fig2.update_layout(
         title='Mobility over time in {}'.format(updated_county),
         legend=dict(bgcolor='#1f2630')
