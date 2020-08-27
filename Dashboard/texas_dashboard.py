@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 import dash
-import cufflinks   # Please do not remove the import to cufflinks
+import cufflinks   # noqa
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
@@ -474,7 +474,6 @@ def cont_error_bar(fig, x, y1, y2, y3, selected_percent):
                              fill='tonexty'
                              ))
     return fig
-
 
 if __name__ == '__main__':
     app.run_server(debug=True, use_reloader=False)

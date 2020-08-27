@@ -1,22 +1,28 @@
 
-Given below is the list of instructions to run the dashboard file
+Given below is the list of instructions to run the dashboard file on your local machine
 
 ---
 
-+ Copy the entire dashboard directory to the working directory including the assets folder.
++ Copy the `Dashboard`,`scripts` and `SIRNet` packages into your working directory. ( Preferably clone the Livid-About-Covid repo entirely )
 
 + Install the requirements of the dependencies from the text file. 
   ```python
   pip install -r requirements.txt
   ```
-+ Generate the geojson files from the `GEOJSONS` directory.
-+ Generate the state level data from the `get_state_data.py` to create the `formatted_all_data.csv`.
-    * This generated data will be used to populate the dashboard and is necessary to be executed before 
+  *Note - There is a different `requirements.txt` for the Dashboard inside the `Dashboard` folder.)
+
++ Update the `parameters.py` file for the required configuration.
+
++ If running for the first time, generate the state data by running the `state_data.py` to generate the 'formatted_all_data.csv'.
+```python
+    python get_state_data.py
+``` 
+* This generated data will be used to populate the dashboard and is necessary to be executed before 
     running the dashboard.
     
-+ Run the `scratch_dashboard.py` file using 
++ Run the `texas_dashboard.py` file using 
   ```python
-  python scratch_dashboard.py
+  python texas_dashboard.py
   ```
 + This will open a port on localhost and display the address `http://127.0.0.1:8050/` where you can click and access the dashboard.
 

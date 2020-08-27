@@ -7,8 +7,10 @@ state = 'Texas'
 county = 'Bexar County'
 tensorboard = 0
 forecast_days = 200
+# Do not change these 2 parameters for the dashboard
 reporting_rates = [0.05, 0.1, 0.3]
 mobility_cases = [25, 50, 75, 100]
+
 n_epochs = 200
 lr_step_size = 4000
 delay_days = 10
