@@ -7,5 +7,5 @@
 # sys.path.insert(0, '/path/to/the/application')
 
 # Do whatever one works for you, man
-from texas_dashboard import app as application
-# from Dashboard.texas_dashboard import app as application
+# from texas_dashboard import app as application
+from Dashboard.texas_dashboard import app as application
