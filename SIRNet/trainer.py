@@ -30,6 +30,7 @@ class Trainer(object):
             summary_writer=self.summary_writer
         ))
         if os.path.exists(self.weights_path):
+            print('Loading weights from file:', self.weights_path)
             model.load_state_dict(torch.load(self.weights_path), strict=False)
         return model
 

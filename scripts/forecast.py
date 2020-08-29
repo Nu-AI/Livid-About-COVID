@@ -111,8 +111,13 @@ def model_and_fit(weights_name, X, Y, scale_factor, prev_cases, params,
     trnr = trainer.Trainer(weights_name, summary_writer=summary_writer)
     model = trnr.build_model(e0, i0)
     if params.train or not os.path.exists(weights_name):
+        print('Training with data for', params.county)
+        print(np.isnan(util.to_numpy(X)).any())
+        print(np.isnan(util.to_numpy(Y)).any())
+        print(X.shape, Y.shape)
         trnr.train(model, X, Y,
                    iters=params.n_epochs, step_size=params.lr_step_size)
+        print('Done training.')
 
     return model
 
@@ -338,7 +343,6 @@ def pipeline(params=None, **kwargs):
 
         if params.tensorboard:
             writer.close()
-        print('Done training.')
 
         # Forecasting
         active, total = forecast(X, model, dates, scale_factor, params)
