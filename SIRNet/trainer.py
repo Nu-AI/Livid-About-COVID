@@ -123,8 +123,12 @@ class Trainer(object):
                                                cost, global_step=i)
                 for name, param in model.named_parameters():
                     if param.requires_grad:
-                        self.summary_writer.add_scalar(
-                            self.model_name + '/' + name, param, global_step=i)
+                        if torch.numel(param) == 1:
+                            self.summary_writer.add_scalar(
+                                self.model_name + '/' + name, param,
+                                global_step=i)
+                        else:
+                            print('no summary for', name)
 
             if (i + 1) % 50 == 0 or (i + 1) == iters:
                 print('\nEpoch = %d, cost = %s' % (i + 1, cost))

@@ -80,14 +80,15 @@ class SIRNetBase(ABC, torch.nn.Module):
         this via super() to initialize the b_model properly"""
         if self.b_model == 'lstm':
             # LSTM states
-            self.h_t = torch.zeros(1, 1, self.i2b.hidden_size)
-            self.c_t = torch.zeros(1, 1, self.i2b.hidden_size)
+            self.h_t = torch.zeros(1, 1, self.i2l.hidden_size)
+            self.c_t = torch.zeros(1, 1, self.i2l.hidden_size)
 
     def _forward_b(self, xt):
         """Contact rate as a function of our input vector"""
         if self.b_model == 'lstm':
             b_inter, (self.h_t, self.c_t) = self.i2l(
-                xt[None, ...], (self.h_t, self.c_t)).squeeze(dim=1)
+                xt[None, ...], (self.h_t, self.c_t))
+            b_inter = b_inter.squeeze(dim=1)
             # TODO No negative contact rates...pytorch does not have LSTM
             #  option to change tanh to relu - needs custom LSTM implementation
             #  in Python to change activation function to mitigate negatives...

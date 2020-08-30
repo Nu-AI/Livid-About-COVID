@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys
 import datetime as dt
 import os
@@ -109,12 +110,9 @@ def model_and_fit(weights_name, X, Y, scale_factor, prev_cases, params,
     e0 = params.estimated_r0 * i0 / params.incubation_days
 
     trnr = trainer.Trainer(weights_name, summary_writer=summary_writer)
-    model = trnr.build_model(e0, i0)
+    model = trnr.build_model(e0, i0, b_model=params.b_model)
     if params.train or not os.path.exists(weights_name):
-        print('Training with data for', params.county)
-        print(np.isnan(util.to_numpy(X)).any())
-        print(np.isnan(util.to_numpy(Y)).any())
-        print(X.shape, Y.shape)
+        print('Training on', params.county)
         trnr.train(model, X, Y,
                    iters=params.n_epochs, step_size=params.lr_step_size)
         print('Done training.')
@@ -421,6 +419,10 @@ if __name__ == '__main__':
         help='Whether to train the model. If `weights-dir` does not exist, '
              'then this option is ignored. Use to continue training from '
              'previously saved weights.')
+    g_model.add_argument(
+        '--b-model', default='linear',
+        help='The type of model for modeling beta as a function of mobility '
+             'data.')
     g_model.add_argument(
         '--n-epochs', default=200, type=int,
         help='Number of training epochs')
