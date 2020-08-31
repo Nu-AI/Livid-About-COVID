@@ -71,7 +71,7 @@ def conflate_data(paramdict, verbose=0):
         county_cases_df = get_data.get_cases_data(df_required)
 
         # Add the cases and deaths to the final table
-        if verbose:
+        if verbose and paramdict['counties'] is not None:
             c_list = county_cases_df['county'].unique().tolist()
             print('Unique Counties in Data:')
             print(c_list)
@@ -182,7 +182,7 @@ def conflate_data(paramdict, verbose=0):
             required_keys.append('Intervention')
 
         if paramdict['counties'] is None and paramdict['states'] is not None:
-            df_required = df_required.astype({'date': 'string'})
+            df_required = df_required.astype({'date': 'str'})
             state_test_df, keys_added = get_data.get_testing_state_data()
             df_required = df_required.merge(state_test_df, left_on='date',
                                             right_on='date', how='left')
@@ -210,6 +210,8 @@ def conflate_data(paramdict, verbose=0):
 
     df_required = df_required[required_keys].reset_index()
     if verbose:
-        print(df_required.tail(20))
+        # print(df_required.tail(20))
         df_required.to_csv("formatted_all_data.csv")
     return df_required
+
+
