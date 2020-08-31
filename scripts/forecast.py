@@ -35,8 +35,8 @@ def load_data(params):
     """
     paramdict = {
         'country': params.country,
-        'states': [params.state],
-        'counties': [params.county]
+        'states': None if params.state is None else [params.state],
+        'counties': None if params.county is None else [params.county]
     }
 
     df = retrieve_data.conflate_data(paramdict)
@@ -57,6 +57,9 @@ def process_data(params, df):
     :return: population - the population for the region
     :return: prev_cases - the number of cases on the day preceding day0
     """
+    # Rid NaNs
+    df.dropna(inplace=True, subset=MOBILITY_KEYS)
+    df.reset_index(inplace=True)
 
     mobility = df[MOBILITY_KEYS]
     cases = df['Cases']
@@ -78,7 +81,7 @@ def process_data(params, df):
     mobility[:, :6] = 1.0 + mobility[:, :6] / 100.0
 
     # Turn the last column into 1-hot social-distancing enforcement
-    mobility[:, 5] = 0  # rid residential mobility...
+    mobility[:, 5] = 0  # rid residential mobility...TODO no me gusta
     if params.mask_modifier:
         mobility[params.mask_day:, 5] = 1.0
 
@@ -113,7 +116,7 @@ def model_and_fit(weights_name, X, Y, scale_factor, prev_cases, params,
     trnr = trainer.Trainer(weights_name, summary_writer=summary_writer)
     model = trnr.build_model(e0, i0, b_model=params.b_model)
     if params.train or not os.path.exists(weights_name):
-        print('Training on', params.county)
+        print('Training on', params.county or params.state or params.country)
         trnr.train(model, X, Y,
                    iters=params.n_epochs,
                    learning_rate=params.learning_rate,
@@ -295,8 +298,12 @@ def pipeline(params=None, **kwargs):
     mobility, cases, day0, population, prev_cases = process_data(params, df)
 
     county_name = params.county
-    if county_name.lower().endswith(' county'):
-        county_name = county_name[:-len(' county')]
+    if county_name:
+        if county_name.lower().endswith(' county'):
+            county_name = county_name[:-len(' county')]
+    else:
+        # TODO: naming
+        county_name = params.county or params.state or params.country
 
     weights_dir_base = (params.weights_dir if params.weights_dir else
                         pjoin(WEIGHTS_DIR, timestamp))
@@ -409,8 +416,9 @@ if __name__ == '__main__':
 
     g_region = parser.add_argument_group('Region Selection')
     g_region.add_argument(
-        '--country', default=DEFAULTS.country,
-        help='The country to look for state and county in data loading')
+        '--country', default=DEFAULTS.country, nargs='+',
+        help='The country to look for state and county in data loading. '
+             'Multiple space-separated values can be passed in here.')
     g_region.add_argument(
         '--state', default=DEFAULTS.state,
         help='The state to look for county in data loading')
@@ -502,6 +510,11 @@ if __name__ == '__main__':
 
     # Parse provided arguments
     args = parser.parse_args()
+
+    if args.state.lower() == 'none':
+        args.state = None
+    if args.county.lower() == 'none':
+        args.county = None
 
 # Delayed imports for CLI speed (used regardless of __main__)
 import json  # noqa

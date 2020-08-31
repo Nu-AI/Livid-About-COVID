@@ -11,6 +11,7 @@ pd.set_option('display.max_rows', None)
 pd.set_option('display.max_colwidth', -1)
 np.set_printoptions(threshold=np.inf)
 
+
 def _filtering_func(x, y):
     # Lambda function to filter the required data from the global mobility data.
     z = x.where(x['sub_region_2'].isin(y))
@@ -201,7 +202,7 @@ def get_country_data():
 
     df_country.reset_index(inplace=True)
     df_country.merge(df2, how='inner', left_on='ISO',
-                                  right_on='iso_code')
+                     right_on='iso_code')
     # print (df_country.cases_total.values, df_country.keys())
     # Setting all the required columns
     temp = df_country.keys()
