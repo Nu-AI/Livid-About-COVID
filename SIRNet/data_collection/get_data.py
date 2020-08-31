@@ -195,7 +195,7 @@ def get_intervention_data():
 def get_country_data():
     df = pd.read_csv(pm.COUNTRY_DATA_SOURCE, parse_dates=['DATE'])
     df2 = pd.read_csv(pm.TESTING_COUNTRY_DATA_SOURCE)
-    
+
     df_country = df.loc[df['country_name'].isin(pm.params['country'])]
     # df2_country = df2.loc[df2.location.isin(pm.params['country'])]
 
@@ -228,5 +228,5 @@ def get_testing_state_data():
     name_list = [pm.NAME_LUT[i] for i in pm.params['states']]
     df = df.loc[df.state.isin(name_list)]
     df.date = pd.to_datetime(df.date, format='%Y%m%d')
-    df = df.astype({'date': 'string'})
+    df = df.astype({'date': 'str'})
     return df[::-1], required_keys
