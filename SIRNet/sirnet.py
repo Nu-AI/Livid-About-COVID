@@ -49,6 +49,8 @@ class SIRNetBase(ABC, torch.nn.Module):
 
     def _make_b_model(self, lstm_hidden_size=None, lstm_bias=False):
         """Transforms input to b parameter of SIR-like models"""
+        self.norm_of_mobility = True  # TODO
+
         if self.b_model == 'linear':
             # Initialization from prior training
             # b_init = torch.tensor(
@@ -67,9 +69,12 @@ class SIRNetBase(ABC, torch.nn.Module):
         elif self.b_model == 'lstm':
             if lstm_hidden_size is None:
                 lstm_hidden_size = self.N_MOBILITY  # good default
-            self.i2l = torch.nn.LSTM(self.input_size, lstm_hidden_size,
+            input_size = 1 if self.norm_of_mobility else self.input_size
+            self.i2l = torch.nn.LSTM(input_size, lstm_hidden_size,
                                      bias=lstm_bias)
-            self.l2b = torch.nn.Linear(lstm_hidden_size, 1)
+            # self.l2b = torch.nn.Linear(lstm_hidden_size, 1)
+            # TODO
+            self.l2b = torch.nn.Linear(1, 1)
         else:
             raise ValueError('b_model must be either "linear" or "lstm" but '
                              'received: {}'.format(self.b_model))
@@ -86,19 +91,34 @@ class SIRNetBase(ABC, torch.nn.Module):
     def _forward_b(self, xt):
         """Contact rate as a function of our input vector"""
         if self.b_model == 'lstm':
-            b_inter, (self.h_t, self.c_t) = self.i2l(
-                xt[None, ...], (self.h_t, self.c_t))
+            if self.norm_of_mobility:
+                xt_ = torch.norm(xt).reshape(1, 1, 1)
+            else:
+                xt_ = xt[None, ...]
+            b_inter, (self.h_t, self.c_t) = self.i2l(xt_, (self.h_t, self.c_t))
             b_inter = b_inter.squeeze(dim=1)
             # TODO No negative contact rates...pytorch does not have LSTM
             #  option to change tanh to relu - needs custom LSTM implementation
             #  in Python to change activation function to mitigate negatives...
-            b = torch.relu(self.l2b(b_inter)).squeeze()
+
+            # TODO: try just shifting from -1/+1 to 0/+1 range...
+            # print(b_inter)
+            # b_inter = b_inter / 2. + 0.5
+            # print(b_inter)
+
+            # Multiply by empirical scalar...
+            # b = torch.relu(self.l2b(b_inter)).squeeze()  # * 5.
+            b = torch.relu(self.l2b(
+                torch.norm(b_inter).reshape(1, 1))
+            ).squeeze()  # * 5.
+            # print(b)
+            # print()
         elif self.b_model == 'linear':
-            xm = xt.clone()
             # Just look at norm of mobility
+            # xm = xt.clone()
             # b = ((1 - torch.sigmoid(self.sd) * xt[0, 5]) *
             #      self.q * torch.norm(xm) ** self.p)
-            b = self.q * torch.norm(xm)
+            b = self.q * torch.norm(xt)
             # b = torch.relu(self.i2b(xm)) ** self.p
         else:
             raise RuntimeError('b_model is invalid, this should not have '

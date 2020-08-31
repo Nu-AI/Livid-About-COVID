@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import sys
 import datetime as dt
+from copy import deepcopy
 import os
 from os.path import join as pjoin
 
@@ -114,7 +115,9 @@ def model_and_fit(weights_name, X, Y, scale_factor, prev_cases, params,
     if params.train or not os.path.exists(weights_name):
         print('Training on', params.county)
         trnr.train(model, X, Y,
-                   iters=params.n_epochs, step_size=params.lr_step_size)
+                   iters=params.n_epochs,
+                   learning_rate=params.learning_rate,
+                   step_size=params.lr_step_size)
         print('Done training.')
 
     return model
@@ -249,6 +252,7 @@ class _AttrDict(object):
 
     def update(self, d):
         self.__dict__.update(d)
+        return self
 
 
 def pipeline(params=None, **kwargs):
@@ -262,13 +266,16 @@ def pipeline(params=None, **kwargs):
 
     :return: forecast actives and totals
     """
+    default_params = deepcopy(DEFAULTS)
     if params:
         # Combine two sources of parameters, skipping `params` attributes
         # starting with '_'
-        params = _AttrDict(
+        params = default_params.update(
             dict(filter(lambda kv: not kv[0].startswith('_'),  # noqa
                         vars(params).items()))
         )
+    else:
+        params = default_params
     params.update(kwargs)
 
     data_action = 'Loading'
@@ -367,6 +374,30 @@ def pipeline(params=None, **kwargs):
     return actives, totals
 
 
+DEFAULTS = _AttrDict()
+DEFAULTS.update(dict(
+    country='United States',
+    state='Texas',
+    county='Bexar County',
+    forecast_days=200,
+    reporting_rates=[0.05, 0.1, 0.3],
+    mobility_cases=[25, 50, 75, 100],
+    mask_modifier=False,
+    mask_day=65,
+    weights_dir=None,
+    train=False,
+    b_model='linear',
+    n_epochs=200,
+    learning_rate=1e-2,
+    lr_step_size=4000,
+    delay_days=10,
+    start_model=23,
+    incubation_days=5,
+    estimated_r0=2.2,
+    tensorboard=False,
+    no_plot=False,
+    data=None,
+))
 if __name__ == '__main__':
     import argparse
 
@@ -378,26 +409,26 @@ if __name__ == '__main__':
 
     g_region = parser.add_argument_group('Region Selection')
     g_region.add_argument(
-        '--country', default='United States',
+        '--country', default=DEFAULTS.country,
         help='The country to look for state and county in data loading')
     g_region.add_argument(
-        '--state', default='Texas',
+        '--state', default=DEFAULTS.state,
         help='The state to look for county in data loading')
     g_region.add_argument(
-        '--county', default='Bexar County',
+        '--county', default=DEFAULTS.county,
         help='The county used in data loading')
 
     g_scenario = parser.add_argument_group('Scenario Options')
     g_scenario.add_argument(
-        '--forecast-days', default=200, type=int,
+        '--forecast-days', default=DEFAULTS.forecast_days, type=int,
         help='Number of days to forecast')
     g_scenario.add_argument(
-        '--reporting-rates', default=[0.05, 0.1, 0.3],
+        '--reporting-rates', default=DEFAULTS.reporting_rates,
         type=float, nargs='+',
         help='Portion of cases that are actually detected. Multiple '
              'space-separated values can be passed in here.')
     g_scenario.add_argument(
-        '--mobility-cases', default=[25, 50, 75, 100],
+        '--mobility-cases', default=DEFAULTS.mobility_cases,
         type=float, nargs='+',
         help='Percentage of mobility assumed in forecasts. Multiple '
              'space-separated values can be passed in here. Note that 4 is the '
@@ -406,12 +437,12 @@ if __name__ == '__main__':
         '--mask-modifier', action='store_true',
         help='Run mobility scenarios considering mask-wearing')
     g_scenario.add_argument(
-        '--mask-day', default=65, type=int,
+        '--mask-day', default=DEFAULTS.mask_day, type=int,
         help='Day of mask order')
 
     g_model = parser.add_argument_group('Model Options')
     g_model.add_argument(
-        '--weights-dir', default=None,
+        '--weights-dir', default=DEFAULTS.weights_dir,
         help='Optional directory to load old weight or store newly trained '
              'ones.')
     g_model.add_argument(
@@ -420,27 +451,30 @@ if __name__ == '__main__':
              'then this option is ignored. Use to continue training from '
              'previously saved weights.')
     g_model.add_argument(
-        '--b-model', default='linear',
+        '--b-model', default=DEFAULTS.b_model,
         help='The type of model for modeling beta as a function of mobility '
              'data.')
     g_model.add_argument(
-        '--n-epochs', default=200, type=int,
+        '--n-epochs', default=DEFAULTS.n_epochs, type=int,
         help='Number of training epochs')
     g_model.add_argument(
-        '--lr-step-size', default=4000, type=int,
+        '--learning-rate', '--lr', default=DEFAULTS.learning_rate, type=float,
+        help='Learning rate')
+    g_model.add_argument(
+        '--lr-step-size', default=DEFAULTS.lr_step_size, type=float,
         help='Learning rate decay step size')
     g_model.add_argument(
-        '--delay-days', default=10, type=int,
+        '--delay-days', default=DEFAULTS.delay_days, type=int,
         help='Days between becoming infected / positive confirmation (due to '
              'incubation period/testing latency')
     g_model.add_argument(
-        '--start-model', default=23, type=int,
+        '--start-model', default=DEFAULTS.start_model, type=int,
         help='The day where we begin our fit (after delay days)')
     g_model.add_argument(
-        '--incubation-days', default=5, type=int,
+        '--incubation-days', default=DEFAULTS.incubation_days, type=int,
         help='Incubation period, default from [Backer et al]')
     g_model.add_argument(
-        '--estimated-r0', default=2.2, type=float,
+        '--estimated-r0', default=DEFAULTS.estimated_r0, type=float,
         help='R0 estimated in literature')
 
     g_misc = parser.add_argument_group('Misc. Options')
@@ -454,7 +488,7 @@ if __name__ == '__main__':
         '--no-plot', action='store_true',
         help='Do not display and save the prediction plots.')
     g_misc.add_argument(
-        '--data', default=None,
+        '--data', default=DEFAULTS.data,
         help='Alternative data path rather than automatically pulling data.')
     # TODO: for future integration
     # parser.add_argument(
