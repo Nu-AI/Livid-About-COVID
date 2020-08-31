@@ -6,6 +6,10 @@ import pandas as pd
 from . import parameters as pm
 from . import data_utils
 
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_colwidth', -1)
+np.set_printoptions(threshold=np.inf)
 
 def _filtering_func(x, y):
     # Lambda function to filter the required data from the global mobility data.
@@ -191,11 +195,14 @@ def get_intervention_data():
 def get_country_data():
     df = pd.read_csv(pm.COUNTRY_DATA_SOURCE, parse_dates=['DATE'])
     df2 = pd.read_csv(pm.TESTING_COUNTRY_DATA_SOURCE)
-    df_country = df.loc[df['country_name'].isin(pm.params['country'])]
-    df_country.reset_index(inplace=True)
-    df_country = df_country.merge(df2, how='outer', left_on='ISO',
-                                  right_on='iso_code')
 
+    df_country = df.loc[df['country_name'].isin(pm.params['country'])]
+    # df2_country = df2.loc[df2.location.isin(pm.params['country'])]
+
+    df_country.reset_index(inplace=True)
+    df_country.merge(df2, how='inner', left_on='ISO',
+                                  right_on='iso_code')
+    # print (df_country.cases_total.values, df_country.keys())
     # Setting all the required columns
     temp = df_country.keys()
     required_keylist = list(filter(lambda x: 'mobility' in x, temp))
@@ -204,7 +211,7 @@ def get_country_data():
                 'census_fips_code', 'stats_population']
     required_keylist = required_keylist + add_cols + npi_keylist
     new_df = df_country[required_keylist]
-    date_vals = df_country['DATE']
+    date_vals = df_country['DATE'].dropna()
     date_vals = date_vals.apply(lambda x: x.strftime('%Y-%m-%d'))
     new_df.DATE = date_vals
     redundant_cols = np.empty(len(new_df['DATE'].values.tolist()))
@@ -221,5 +228,5 @@ def get_testing_state_data():
     name_list = [pm.NAME_LUT[i] for i in pm.params['states']]
     df = df.loc[df.state.isin(name_list)]
     df.date = pd.to_datetime(df.date, format='%Y%m%d')
-    df = df.astype({'date': 'string'})
+    df = df.astype({'date': 'str'})
     return df[::-1], required_keys
