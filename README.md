@@ -37,7 +37,7 @@ pip install -r requirements.txt
 Change the `tensorflow-x` line in `requirements.txt` depending on whether you will be running on
 CPU or GPU.
 
-For the most up-to-date forecasting employing SIRNet, run the script `scripts/fit_bexar.py` after
+For the most up-to-date forecasting employing SIRNet, run the script `scripts/forecast.py` after
 installation. Parameters within can be modified for different counties, states, countries, etc.
 Stay tuned for a more generalized and unified script-based interface.
 

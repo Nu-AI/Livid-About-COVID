@@ -13,6 +13,7 @@ import math
 import torch
 
 from .sirnet import SEIRNet
+from . import metrics
 from . import util
 
 
@@ -30,6 +31,7 @@ class Trainer(object):
             summary_writer=self.summary_writer
         ))
         if os.path.exists(self.weights_path):
+            print('Loading weights from file:', self.weights_path)
             model.load_state_dict(torch.load(self.weights_path), strict=False)
         return model
 
@@ -97,16 +99,17 @@ class Trainer(object):
         cost = output.data.item()
         return cost
 
-    def train(self, model, X, Y, iters, step_size=4000):
+    def train(self, model, X, Y, iters, learning_rate=1e-2, step_size=4000):
         # Optimizer, scheduler, loss
         loss = torch.nn.MSELoss()
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
                                                     step_size=step_size,
                                                     gamma=0.1)
         torch.autograd.set_detect_anomaly(True)
 
         cost = None
+        summary_ignored = set()
         for i in range(iters):
             batch_size = X.shape[1]  # TODO
             cost = 0.
@@ -122,8 +125,13 @@ class Trainer(object):
                                                cost, global_step=i)
                 for name, param in model.named_parameters():
                     if param.requires_grad:
-                        self.summary_writer.add_scalar(
-                            self.model_name + '/' + name, param, global_step=i)
+                        if torch.numel(param) == 1:
+                            self.summary_writer.add_scalar(
+                                self.model_name + '/' + name, param,
+                                global_step=i)
+                        elif name not in summary_ignored:
+                            print('no summary for', name)
+                            summary_ignored.add(name)
 
             if (i + 1) % 50 == 0 or (i + 1) == iters:
                 print('\nEpoch = %d, cost = %s' % (i + 1, cost))
@@ -131,6 +139,7 @@ class Trainer(object):
                 for name, param in model.named_parameters():
                     print('   ', name, param.data,
                           'trained={}'.format(param.requires_grad))
+                print('MSE={}'.format(self.evaluate(model, X, Y)))
 
             # TODO: scheduler may restart learning rate if trying to load from
             #  file. Mitigation: store epoch number in filename
@@ -142,3 +151,9 @@ class Trainer(object):
             self.summary_writer.add_graph(model, X)
 
         return cost  # the final cost
+
+    def evaluate(self, model, X, Y):
+        # TODO: WIP in function formalization
+        YP, _ = model.forward(X)
+        mse = metrics.mean_squared_error_samplewise(y_pred=YP, y_true=Y)
+        return mse

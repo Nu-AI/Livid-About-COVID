@@ -20,7 +20,7 @@ basepath = os.path.join(os.path.dirname(__file__))
 ROOT_DIR = os.path.join(basepath, '..')
 sys.path.append(ROOT_DIR)
 import parameters as param
-from scripts import fit_bexar_mask
+from scripts import forecast
 from Dashboard.GEOJSONs.create_geojson import generate_geojson
 
 basepath = os.path.join(ROOT_DIR, 'Dashboard')
@@ -70,7 +70,7 @@ date_list = sorted(df['date'].unique().tolist())
 dates = df['date'].unique().tolist()
 
 # Default model predictions
-actives, totals = fit_bexar_mask.pipeline(
+actives, totals = forecast.pipeline(
     param, data=df[df['County'] == 'Bexar County'].reset_index(),
     county='Bexar County')
 # Date list in the slider menu
@@ -381,8 +381,8 @@ def plot_data(selected_date, selected_percent, clickData):
     mob_df = df[df['County'] == updated_county]
     mob_df.reset_index(drop=True, inplace=True)
     county = mob_df.County.unique().tolist()[0]  # TODO(tmp)
-    actives, totals = fit_bexar_mask.pipeline(param, data=mob_df,
-                                              county=county)
+    actives, totals = forecast.pipeline(param, data=mob_df,
+                                        county=county)
     totalpred_df = pd.DataFrame.from_dict(totals[0.1])
     total_predicted_cases_0_05 = pd.DataFrame.from_dict(totals[0.05])
     total_predicted_cases_0_3 = pd.DataFrame.from_dict(totals[0.3])
