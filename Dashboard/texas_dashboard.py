@@ -73,7 +73,6 @@ dates = df['date'].unique().tolist()
 actives, totals = fit_bexar_mask.pipeline(
     param, data=df[df['County'] == 'Bexar County'].reset_index(),
     county='Bexar County')
-
 # Date list in the slider menu
 DATE_MODIFIED = [dates[::-1][i] for i in range(len(dates)) if i % 10 == 0][::-1]
 
