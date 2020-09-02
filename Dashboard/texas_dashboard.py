@@ -417,7 +417,8 @@ def plot_data(selected_date, selected_percent, clickData):
         active_df = pd.DataFrame.from_dict(actives['0.1'])
         active_predicted_cases_0_05 = pd.DataFrame.from_dict(actives['0.05'])
         active_predicted_cases_0_3 = pd.DataFrame.from_dict(actives['0.3'])
-
+        active_df.date = pd.to_datetime(active_df.date, format='%d-%b %Y')
+        totalpred_df.date = pd.to_datetime(totalpred_df.date, format='%d-%b %Y')
         fig3 = cont_error_bar(fig3, totalpred_df['date'],
                               total_predicted_cases_0_3[str(selected_percent)],
                               totalpred_df[str(selected_percent)],
