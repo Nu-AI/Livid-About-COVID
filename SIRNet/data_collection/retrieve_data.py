@@ -60,9 +60,9 @@ def conflate_data(paramdict, verbose=0):
         county_list = list(df_required['sub_region_2'].values)
         unique_list = list(df_required['sub_region_2'].unique())
         counter = [county_list.count(i) for i in unique_list]
-        pop_list = [pop_list[j] for j in range(len(counter)) for _ in
-                    range(counter[j])]
-
+        if counter is not None:
+            pop_list = [pop_list[j] for j in range(len(counter)) for _ in
+                        range(counter[j])]
         df_required['Population'] = pop_list
 
         # Retrieve the active cases and the total deaths
@@ -75,7 +75,7 @@ def conflate_data(paramdict, verbose=0):
             c_list = county_cases_df['county'].unique().tolist()
             print('Unique Counties in Data:')
             print(c_list)
-
+        print (len(df_required), len(county_cases_df.cases.values))
         df_required['Cases'] = county_cases_df['cases'].values
         df_required['Deaths'] = county_cases_df['deaths'].values
         fips_list = county_cases_df['fips'].values

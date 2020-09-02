@@ -159,11 +159,12 @@ def reorganize_case_data(df, df_county_cases):
                 temp_df = temp_df[['fips', 'date', 'county', 'state',
                                    'cases', 'deaths']]
         # In the case of state data
+            length = county_list.count(county)
+
         else:
             temp_df = df_county_cases[
-                df_county_cases['state'] == county.split(" ")[0]]
-
-        length = county_list.count(county)
+                df_county_cases['state'] == county]
+            length = len(list(df['sub_region_1'].values))
         # Extend the case list to map with the mobility and population data
         # Create a dictionary for cases and deaths in the selected region
         case_list = list(temp_df['cases'].values)
@@ -177,16 +178,23 @@ def reorganize_case_data(df, df_county_cases):
 
         if len(temp_df['cases'].tolist()) < length:
             # Extend other columns in the table
-            new_temp_df['state'] = df.loc[
-                df['sub_region_2'] == county]['sub_region_1'].tolist()
+
             if pm.params['counties'] is not None:
                 new_temp_df['county'] = df.loc[
                     df['sub_region_2'] == county]['sub_region_2'].tolist()
+                new_temp_df['state'] = df.loc[
+                    df['sub_region_2'] == county]['sub_region_1'].tolist()
+                new_temp_df['date'] = df.loc[
+                    df['sub_region_2'] == county]['date'].tolist()
 
+            else:
+                new_temp_df['state'] = df.loc[
+                    df['sub_region_1'] == county]['sub_region_1'].tolist()
+                new_temp_df['date'] = df.loc[
+                    df['sub_region_1'] == county]['date'].tolist()
             # Fill in the dictionary
             new_temp_df['fips'] = fips_list
-            new_temp_df['date'] = df.loc[
-                df['sub_region_2'] == county]['date'].tolist()
+
             new_temp_df['cases'] = case_list
             new_temp_df['deaths'] = death_list
 
