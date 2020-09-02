@@ -65,12 +65,11 @@ def get_mobility_data():
 def get_population_data(df):
     state_list = df['sub_region_1'].dropna().unique().tolist()
 
-    state_list = ['_'.join(state.split(' ')) for state in state_list]
+    new_state_list = ['_'.join(state.split(' ')) for state in state_list]
 
     # retrieve the population data based on the state provided
     base_path = [pm.CENSUS_DATA_SOURCE_TEMPLATE.format(
-        state=data_utils.state_lookup(state)) for state in state_list]
-
+        state=data_utils.state_lookup(state)) for state in new_state_list]
     i = 0
     final_pop_df = pd.DataFrame()
     # Iterate over the given paths for the states required
@@ -86,14 +85,13 @@ def get_population_data(df):
         pop_df = pop_df[[county, 'Unnamed: 12']].iloc[1:].reset_index()
         area_list = [i.split(',')[0].replace('.', '') for i in pop_df[county]]
         pop_df[county] = area_list
-
         def get_state_arr(state_list_, pop_df_):
             return [state_list_[count]] * len(pop_df_[county].tolist())
 
         # Filter out the data required for the counties
         if pm.params['counties'] is not None:
             pop_df = pop_df.where(
-                pop_df[county].isin(df[df['sub_region_1'] == state_list[count]
+                pop_df[county].isin(df[df['sub_region_1'] == new_state_list[count]
                                        ]['sub_region_2'].unique()))
         # Just get the population for the required state
         else:
@@ -101,6 +99,7 @@ def get_population_data(df):
         pop_df.dropna(how='all', inplace=True)
         pop_df.reset_index(inplace=True)
         pop_df['State'] = get_state_arr(state_list, pop_df)
+        print (pop_df['State'])
         count += 1
         final_pop_df = final_pop_df.append(pop_df, sort=True)
         i += 1
@@ -160,7 +159,7 @@ def get_cases_data(df):
         state_cases_df = state_cases_update(state_cases_df)
         state_cases_df = state_cases_df[['fips', 'date', 'state',
                                          'cases', 'deaths']]
-        return state_cases_df.sort_values(by=['state', 'date']).reset_index()
+        return data_utils.reorganize_case_data(df,state_cases_df.sort_values(by=['state', 'date']).reset_index())
 
 
 # Get intervention setting dates for the different counties and states in USA
