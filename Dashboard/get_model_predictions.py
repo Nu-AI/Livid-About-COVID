@@ -19,7 +19,7 @@ if not os.path.exists(PREDS_DIR):
 import parameters as param
 
 
-import fit_bexar_mask
+import forecast
 filepath = path.abspath(path.join(basepath, 'GEOJSONs'))
 
 # Get the data from the data collection module
@@ -33,12 +33,18 @@ prediction_dict = {}
 for county in county_list:
 	county_name = county.split(' ')[0]
 	try:
-		actives, totals = fit_bexar_mask.pipeline(
+		actives, totals = forecast.pipeline(
 			param, data=df[df['County'] == county].reset_index(),
 			county=county)
 		prediction_dict[county_name] = {}
 		prediction_dict[county_name]['active'] = actives
 		prediction_dict[county_name]['total'] = totals
+		for keys in actives.keys():
+			date_list = actives[keys]['date']
+			new_list = list(map(lambda x:x.strftime('%d-%b %Y'), date_list))
+			actives[keys]['date'] = new_list
+			totals[keys]['date']  = new_list
+		# print (actives.keys(),actives[0.05].keys())
 	except RuntimeError:
 		pass
 
@@ -46,7 +52,7 @@ for county in county_list:
 pred_df = pd.DataFrame.from_dict(prediction_dict)
 timestamp = dt.datetime.now().strftime('%Y_%m_%d_%H_%M')
 
-pred_df.to_csv(os.path.join(PREDS_DIR,'model_predictions_{}.csv'.format(timestamp)))
-
+# pred_df.to_csv(os.path.join(PREDS_DIR,'model_predictions_{}.csv'.format(timestamp)))
+pred_df.to_json(os.path.join(PREDS_DIR,'model_predictions_{}.json'.format(timestamp)))
 print ("Done", prediction_dict.keys())
 

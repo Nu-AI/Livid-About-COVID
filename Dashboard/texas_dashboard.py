@@ -22,6 +22,13 @@ sys.path.append(ROOT_DIR)
 import parameters as param
 from scripts import forecast
 from Dashboard.GEOJSONs.create_geojson import generate_geojson
+import json
+
+def read_json(json_path):
+    with open(json_path,'r') as json_data:
+        data_dict = json.load(json_data)
+    return pd.DataFrame(data_dict)
+
 
 basepath = os.path.join(ROOT_DIR, 'Dashboard')
 filepath = path.abspath(path.join(basepath, 'GEOJSONs'))
@@ -70,9 +77,13 @@ date_list = sorted(df['date'].unique().tolist())
 dates = df['date'].unique().tolist()
 
 # Default model predictions
-actives, totals = forecast.pipeline(
-    param, data=df[df['County'] == 'Bexar County'].reset_index(),
-    county='Bexar County')
+# actives, totals = forecast.pipeline(
+#     param, data=df[df['County'] == 'Bexar County'].reset_index(),
+#     county='Bexar County')
+
+prediction_df = read_json('model_predictions_2020_09_02_00_16.json')
+actives, totals = prediction_df['Bexar']
+prediction_list = prediction_df.keys().tolist()
 # Date list in the slider menu
 DATE_MODIFIED = [dates[::-1][i] for i in range(len(dates)) if i % 10 == 0][::-1]
 
@@ -342,10 +353,12 @@ def plot_map(selected_date, selected_mob):
 
 
 # Default graph layout settings
-def set_figure_template(fig_data, fig_layout):
-    fig_data[0]['marker']['color'] = '#2cfec1'
-    fig_data[0]['marker']['opacity'] = 1
-    fig_data[0]['marker']['line']['width'] = 0
+def set_figure_template(fig_layout, *args):
+    for arg in args:
+        fig_data = arg
+        fig_data[0]['marker']['color'] = '#2cfec1'
+        fig_data[0]['marker']['opacity'] = 1
+        fig_data[0]['marker']['line']['width'] = 0
     fig_layout['paper_bgcolor'] = '#1f2630'
     fig_layout['plot_bgcolor'] = '#1f2630'
     fig_layout['font']['color'] = '#2cfec1'
@@ -381,46 +394,73 @@ def plot_data(selected_date, selected_percent, clickData):
     mob_df = df[df['County'] == updated_county]
     mob_df.reset_index(drop=True, inplace=True)
     county = mob_df.County.unique().tolist()[0]  # TODO(tmp)
-    actives, totals = forecast.pipeline(param, data=mob_df,
-                                        county=county)
-    totalpred_df = pd.DataFrame.from_dict(totals[0.1])
-    total_predicted_cases_0_05 = pd.DataFrame.from_dict(totals[0.05])
-    total_predicted_cases_0_3 = pd.DataFrame.from_dict(totals[0.3])
-
-    active_df = pd.DataFrame.from_dict(actives[0.1])
-    active_predicted_cases_0_05 = pd.DataFrame.from_dict(actives[0.05])
-    active_predicted_cases_0_3 = pd.DataFrame.from_dict(actives[0.3])
-
     mob_df = mob_df[['date', 'Retail & recreation',
                      'Grocery & pharmacy', 'Parks', 'Transit stations',
                      'Workplace', 'Residential']]
     mob_df = mob_df.set_index('date')
-
     fig3 = go.Figure()
-    fig3 = cont_error_bar(fig3, totalpred_df['date'],
-                          total_predicted_cases_0_3[int(selected_percent)],
-                          totalpred_df[int(selected_percent)],
-                          total_predicted_cases_0_05[int(selected_percent)],
-                          selected_percent)
-    fig3_layout = fig3['layout']
-    fig3_data = fig3['data']
-    fig3.update_layout(
-        title='Total predicted cases based on the reporting rate',
-        showlegend=False
-    )
+
+
     fig = go.Figure()
 
-    fig = cont_error_bar(fig, active_df['date'],
-                         active_predicted_cases_0_3[int(selected_percent)],
-                         active_df[int(selected_percent)],
-                         active_predicted_cases_0_05[int(selected_percent)],
-                         selected_percent)
-    fig_layout = fig["layout"]
-    fig_data = fig["data"]
-    fig.update_layout(
-        title='Active predicted cases based on the reporting rate',
-        showlegend=False
-    )
+    county = county.split(' ')[0]
+    '''
+    # actives, totals = forecast.pipeline(param, data=mob_df,
+    #                                     county=county)
+    '''
+    if county in prediction_list:
+        actives, totals = prediction_df[county]
+        totalpred_df = pd.DataFrame.from_dict(totals['0.1'])
+        total_predicted_cases_0_05 = pd.DataFrame.from_dict(totals['0.05'])
+        total_predicted_cases_0_3 = pd.DataFrame.from_dict(totals['0.3'])
+
+        active_df = pd.DataFrame.from_dict(actives['0.1'])
+        active_predicted_cases_0_05 = pd.DataFrame.from_dict(actives['0.05'])
+        active_predicted_cases_0_3 = pd.DataFrame.from_dict(actives['0.3'])
+
+        fig3 = cont_error_bar(fig3, totalpred_df['date'],
+                              total_predicted_cases_0_3[str(selected_percent)],
+                              totalpred_df[str(selected_percent)],
+                              total_predicted_cases_0_05[str(selected_percent)],
+                              selected_percent)
+
+        fig3_layout = fig3['layout']
+        fig3_data = fig3['data']
+        fig3.update_layout(
+            title='Total predicted cases based on the reporting rate for {} County'.format(county),
+            showlegend=False
+        )
+
+        fig = cont_error_bar(fig, active_df['date'],
+                             active_predicted_cases_0_3[str(selected_percent)],
+                             active_df[str(selected_percent)],
+                             active_predicted_cases_0_05[str(selected_percent)],
+                             selected_percent)
+        fig_layout = fig["layout"]
+        fig_data = fig["data"]
+
+        fig.update_layout(
+            title='Active predicted cases based on the reporting rate for {} County'.format(county),
+            showlegend=False
+        )
+        set_figure_template(fig_layout, fig_data)
+        set_figure_template(fig3_layout, fig3_data )
+
+
+    else:
+        fig_layout = fig["layout"]
+        fig.update_layout(
+            title='Active predicted cases not available for {} County'.format(county),
+            showlegend=False
+        )
+        fig3_layout = fig3["layout"]
+        fig3.update_layout(
+            title='Total predicted cases not available for {} County'.format(county),
+            showlegend=False
+        )
+        set_figure_template(fig_layout)
+        set_figure_template(fig3_layout)
+
     fig2 = mob_df.iplot(asFigure=True, title="Average Mobility over time")
     fig2_layout = fig2["layout"]
     fig2_data = fig2["data"]
@@ -429,9 +469,7 @@ def plot_data(selected_date, selected_percent, clickData):
         title='Mobility over time in {}'.format(updated_county),
         legend=dict(bgcolor='#1f2630')
     )
-    set_figure_template(fig_data, fig_layout)
-    set_figure_template(fig2_data, fig2_layout)
-    set_figure_template(fig3_data, fig3_layout)
+    set_figure_template(fig2_layout, fig2_data)
 
     return fig, fig3, fig2
 
@@ -474,7 +512,6 @@ def cont_error_bar(fig, x, y1, y2, y3, selected_percent):
                              fill='tonexty'
                              ))
     return fig
-
 
 if __name__ == '__main__':
     app.run_server(debug=True, use_reloader=False)

@@ -58,8 +58,12 @@ def process_data(params, df):
     :return: prev_cases - the number of cases on the day preceding day0
     """
     # Rid NaNs
-    df.dropna(inplace=True, subset=MOBILITY_KEYS)
-    df.reset_index(inplace=True)
+    print (df.Population[0],df.shape, "the total poulation in the df")
+
+
+    print (df.Population.unique(), df.shape, "the new total poulation in the df")
+
+    # df.reset_index(inplace=True)
 
     mobility = df[MOBILITY_KEYS]
     cases = df['Cases']
