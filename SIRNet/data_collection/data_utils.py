@@ -67,7 +67,7 @@ def extend_required_df(df):
         origin=pd.Timestamp(df['date'][df.index[-1]])).astype(str))
     # Resetting the index
     index = 0 - no_days
-    for i in range(no_days):
+    for _ in range(no_days):
         df = df.append(pd.Series([np.NaN]), ignore_index=True)  # Append zeroes
 
     # Fill the empty values with the actual ones
@@ -98,6 +98,27 @@ def apply_extension(df, region):
 
 def state_lookup(state):
     return pm.STATE_LUT[state]
+
+
+def filter_mobility_data(mobility):
+    mobility = np.where(mobility == '', -200.0, mobility)
+    flat_mobility = mobility.ravel()
+    for i in range(1, flat_mobility.size - 1):
+        if flat_mobility[i] == -200.0:
+            if flat_mobility[i + 1] == flat_mobility[i]:
+                count = i
+                val = flat_mobility[count]
+                while val == flat_mobility[i]:
+                    val = flat_mobility[count + 1]
+                    count += 1
+                    if count == flat_mobility.size - 1:
+                        val = flat_mobility[i - 1]
+                        break
+            else:
+                val = flat_mobility[i + 1]
+            flat_mobility[i] = (flat_mobility[i - 1] + val) / 2
+    return flat_mobility.reshape(mobility.shape)
+
 
 
 def reorganize_case_data(df, df_county_cases):
@@ -206,3 +227,5 @@ def reorganize_case_data(df, df_county_cases):
             new_county_df_list.append(temp_df)
 
     return pd.concat(new_county_df_list, sort=True)
+
+

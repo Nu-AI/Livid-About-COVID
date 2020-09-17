@@ -373,6 +373,7 @@ def set_figure_template(fig_layout, *args):
     fig_layout['margin']['l'] = 50
 
 
+
 # Graph callback function
 @app.callback(
     [Output('slider_graph', 'figure'),
@@ -445,7 +446,7 @@ def plot_data(selected_date, selected_percent, clickData):
             showlegend=False
         )
         set_figure_template(fig_layout, fig_data)
-        set_figure_template(fig3_layout, fig3_data )
+        set_figure_template(fig3_layout, fig3_data)
 
 
     else:
@@ -468,7 +469,7 @@ def plot_data(selected_date, selected_percent, clickData):
 
     fig2.update_layout(
         title='Mobility over time in {}'.format(updated_county),
-        legend=dict(bgcolor='#1f2630')
+        legend=dict(bgcolor='#1f2630', font=dict(color="#2cfec1"))
     )
     set_figure_template(fig2_layout, fig2_data)
 

@@ -4,7 +4,7 @@ import datetime as dt
 from copy import deepcopy
 import os
 from os.path import join as pjoin
-
+from SIRNet.data_collection import data_utils
 # === start paths ===
 ROOT_DIR = pjoin(os.path.dirname(__file__), '..')
 sys.path.append(ROOT_DIR)
@@ -39,8 +39,8 @@ def load_data(params):
         'counties': None if params.county is None else [params.county]
     }
 
-    df = retrieve_data.conflate_data(paramdict)
-    return df
+
+    return retrieve_data.conflate_data(paramdict)
 
 
 def process_data(params, df):
@@ -79,7 +79,7 @@ def process_data(params, df):
     # earlier)
     cases = np.array(cases[params.delay_days:])
     mobility = np.array(mobility[:-params.delay_days])
-
+    mobility = data_utils.filter_mobility_data(mobility)
     mobility = np.asarray(mobility).astype(np.float32)
     # convert percentages of change to fractions of activity
     mobility[:, :6] = 1.0 + mobility[:, :6] / 100.0

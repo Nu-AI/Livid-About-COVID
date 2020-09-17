@@ -12,19 +12,19 @@ pd.set_option('display.max_colwidth', -1)
 paramdict = {}
 paramdict['country'] = ['United States']
 paramdict['states'] = ['Texas']
-paramdict['counties'] = None
-print(paramdict['country'])
+paramdict['counties'] = ['Bexar County']
+print (paramdict['country'])
 # Retrieve the data and save to the csv
-df = retrieve_data.conflate_data(paramdict, verbose=0)
+df = retrieve_data.conflate_data(paramdict, verbose=1)
 print (len(df[df.Cases>0]), len(df))
 # df.to_csv("formatted_all_data.csv")
 print (df.tail(10))
 print("Finished generating data ...")
 SCRIPT_DIR = os.path.abspath(os.path.join(ROOT_DIR,'scripts'))
 sys.path.append(SCRIPT_DIR)
-import fit_bexar_mask
+import forecast
 
-actives, totals = fit_bexar_mask.pipeline(
+actives, totals = forecast.pipeline(
 			params, data=df,
-			county=paramdict['counties'], country=paramdict['country'][0], state=paramdict['states'][0])
+			county=paramdict['counties'][0], country=paramdict['country'][0], state=paramdict['states'][0])
 
