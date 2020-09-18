@@ -25,7 +25,7 @@ def _filtering_func(x, y):
 def get_mobility_data():
 	# Retrieve mobility data from Google's mobility reports.
 	df = data_utils.read_csv(pm.MOBILITY_DATA_SOURCE)
-	print(len(df))
+
 	# Check if data is required for only the country
 	if pm.params['country'] is not None and pm.params['states'] is None:
 		df_country = df[df['country_region'].isin(pm.params['country'])]
@@ -203,7 +203,6 @@ def get_country_data():
 	df_country.reset_index(inplace=True)
 	df_country.merge(df2, how='inner', left_on='ISO',
 	                 right_on='iso_code')
-	# print (df_country.cases_total.values, df_country.keys())
 	# Setting all the required columns
 	temp = df_country.keys()
 	required_keylist = list(filter(lambda x: 'mobility' in x, temp))
