@@ -2,7 +2,6 @@ import os
 from os import path
 import sys
 
-
 import pandas as pd
 import datetime as dt
 
@@ -17,9 +16,8 @@ if not os.path.exists(PREDS_DIR):
 	os.mkdir(PREDS_DIR)
 
 import parameters as param
-
-
 import forecast
+
 filepath = path.abspath(path.join(basepath, 'GEOJSONs'))
 
 # Get the data from the data collection module
@@ -55,4 +53,3 @@ timestamp = dt.datetime.now().strftime('%Y_%m_%d_%H_%M')
 # pred_df.to_csv(os.path.join(PREDS_DIR,'model_predictions_{}.csv'.format(timestamp)))
 pred_df.to_json(os.path.join(PREDS_DIR,'model_predictions_{}.json'.format(timestamp)))
 print ("Done", prediction_dict.keys())
-

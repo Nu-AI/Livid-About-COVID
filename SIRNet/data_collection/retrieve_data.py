@@ -211,7 +211,7 @@ def conflate_data(paramdict, verbose=0):
     df_required = df_required[required_keys].reset_index()
     if verbose:
         print(df_required.tail(20))
-        # df_required.to_csv("formatted_all_data.csv")
+        df_required.to_csv("formatted_all_data.csv")
     return df_required
 
 
