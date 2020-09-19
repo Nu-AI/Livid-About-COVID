@@ -2,6 +2,7 @@ import sys
 import urllib.request
 import os
 from os import path
+import glob
 
 import numpy as np
 import pandas as pd
@@ -18,9 +19,14 @@ import plotly.graph_objects as go
 
 basepath = os.path.join(os.path.dirname(__file__))
 ROOT_DIR = os.path.join(basepath, '..')
+DASH_DIR = os.path.abspath(os.path.join(ROOT_DIR, 'Dashboard'))
+PREDS_DIR = os.path.join(DASH_DIR,'model_predictions')
+
+file_list = glob.glob(PREDS_DIR,'/*')
+prediction_file = max(file_list, key=os.path.getctime())
+
 sys.path.append(ROOT_DIR)
 import parameters as param
-from scripts import forecast
 from Dashboard.GEOJSONs.create_geojson import generate_geojson
 import json
 
@@ -28,7 +34,6 @@ def read_json(json_path):
     with open(json_path,'r') as json_data:
         data_dict = json.load(json_data)
     return pd.DataFrame(data_dict)
-
 
 basepath = os.path.join(ROOT_DIR, 'Dashboard')
 filepath = path.abspath(path.join(basepath, 'GEOJSONs'))
@@ -81,7 +86,8 @@ dates = df['date'].unique().tolist()
 #     param, data=df[df['County'] == 'Bexar County'].reset_index(),
 #     county='Bexar County')
 
-prediction_df = read_json('model_predictions_2020_09_02_00_16.json')
+#prediction_df = read_json('model_predictions_2020_09_02_00_16.json')
+prediction_df = read_json(prediction_file)
 actives, totals = prediction_df['Bexar']
 prediction_list = prediction_df.keys().tolist()
 # Date list in the slider menu
