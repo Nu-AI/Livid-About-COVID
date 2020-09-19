@@ -14,7 +14,7 @@ pd.set_option('display.max_colwidth', -1)
 paramdict = {}
 paramdict['country'] = ['United States']
 paramdict['states'] = ['Texas']
-paramdict['counties'] = ['Bexar County']
+paramdict['counties'] = ['all']
 print(paramdict['country'])
 # Retrieve the data and save to the csv
 df = retrieve_data.conflate_data(paramdict, verbose=1)
