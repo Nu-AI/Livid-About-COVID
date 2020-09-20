@@ -207,11 +207,13 @@ def conflate_data(paramdict, verbose=0):
         }, inplace=True)
         npi_list = [x for x in df_required.keys() if 'npi' in x]
         required_keys += npi_list
-    df_required = df_required.drop_duplicates(subset=['date'], keep='last')
+
+    length_list = [len(value) if value is not None else 0 for value in paramdict.values()]
+    if max(length_list) == 1 and 'all' not in paramdict['counties']:
+        df_required = df_required.drop_duplicates(subset=['date'], keep='last')
     df_required = df_required[required_keys].reset_index()
     if verbose:
         print(df_required.tail(20))
         df_required.to_csv("formatted_all_data.csv")
     return df_required
-
 
