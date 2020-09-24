@@ -81,6 +81,7 @@ def process_data(params, df):
     mobility = np.array(mobility[:-params.delay_days])
     mobility = data_utils.filter_mobility_data(mobility)
     mobility = np.asarray(mobility).astype(np.float32)
+    mobility = mobility[~np.isnan(mobility).any(axis=1)]
     # convert percentages of change to fractions of activity
     mobility[:, :6] = 1.0 + mobility[:, :6] / 100.0
 
