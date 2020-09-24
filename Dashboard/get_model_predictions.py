@@ -7,9 +7,10 @@ import datetime as dt
 
 basepath = os.path.join(os.path.dirname(__file__))
 ROOT_DIR = os.path.abspath(os.path.join(basepath, '..'))
+
 SCRIPT_DIR = os.path.abspath(os.path.join(ROOT_DIR,'scripts'))
 sys.path.append(SCRIPT_DIR)
-
+sys.path.append(ROOT_DIR)
 DASH_DIR = os.path.abspath(os.path.join(ROOT_DIR, 'Dashboard'))
 PREDS_DIR = os.path.join(DASH_DIR,'model_predictions')
 if not os.path.exists(PREDS_DIR):
@@ -51,5 +52,3 @@ pred_df = pd.DataFrame.from_dict(prediction_dict)
 timestamp = dt.datetime.now().strftime('%Y_%m_%d_%H_%M')
 
 # pred_df.to_csv(os.path.join(PREDS_DIR,'model_predictions_{}.csv'.format(timestamp)))
-pred_df.to_json(os.path.join(PREDS_DIR,'model_predictions_{}.json'.format(timestamp)))
-print ("Done", prediction_dict.keys())

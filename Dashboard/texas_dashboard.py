@@ -22,7 +22,7 @@ ROOT_DIR = os.path.join(basepath, '..')
 DASH_DIR = os.path.abspath(os.path.join(ROOT_DIR, 'Dashboard'))
 PREDS_DIR = os.path.join(DASH_DIR,'model_predictions')
 
-file_list = glob.glob(PREDS_DIR,'/*')
+file_list = glob.glob(os.path.join(PREDS_DIR,'*'))
 prediction_file = max(file_list, key=os.path.getctime())
 
 sys.path.append(ROOT_DIR)
