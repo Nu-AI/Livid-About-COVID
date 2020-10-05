@@ -13,6 +13,6 @@ function realpath()
     dir=$(cd "$dir" && /bin/pwd)
     echo "$dir$base"
 }
-cd realpath
+cd $(realpath $(dirname $0))
 python3 get_state_data.py
 python3 get_model_predictions.py
