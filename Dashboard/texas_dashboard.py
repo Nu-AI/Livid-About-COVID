@@ -22,11 +22,12 @@ ROOT_DIR = os.path.join(basepath, '..')
 DASH_DIR = os.path.abspath(os.path.join(ROOT_DIR, 'Dashboard'))
 PREDS_DIR = os.path.join(DASH_DIR,'model_predictions')
 
-file_list = glob.glob(PREDS_DIR+'/*')
+file_list = glob.glob(os.path.join(PREDS_DIR,'*'))
 prediction_file = max(file_list, key=os.path.getctime)
 
 sys.path.append(ROOT_DIR)
-import parameters as param
+sys.path.append(DASH_DIR)
+import Dashboard.parameters as param
 from Dashboard.GEOJSONs.create_geojson import generate_geojson
 import json
 
@@ -37,9 +38,11 @@ def read_json(json_path):
 
 basepath = os.path.join(ROOT_DIR, 'Dashboard')
 filepath = path.abspath(path.join(basepath, 'GEOJSONs'))
-
+directory = os.path.dirname(os.path.abspath(__file__))
+filename = os.path.join(directory,'formatted_all_data.csv')
+#print ("The filepath", filepath)
 # Get the data from the data collection module
-formatted_data = pd.read_csv('formatted_all_data.csv', dtype={'fips': str})
+formatted_data = pd.read_csv(filename, dtype={'fips': str})
 
 # Generating the GEOJSON files
 generate_geojson(filepath, formatted_data)
@@ -60,8 +63,24 @@ app = dash.Dash(
         {'name': 'viewport', 'content': 'width=device-width, initial-scale=1.0'}
     ],
 )
+'''
+app.config.update({
+    # as the proxy server will remove the prefix
+
+    # the front-end will prefix this string to the requests
+    # that are made to the proxy server
+    'requests_pathname_prefix': ''
+})
+'''
+app.config.update({
+    'url_base_pathname':'',
+    'routes_pathname_prefix':'',
+    'requests_pathname_prefix':'',
+})
 server = app.server
 
+#app.scripts.config.serve_locally = True
+app.css.config.serve_locally = True
 # Reading the cases from the counties
 county_cases_df = pd.read_csv(urllib.request.urlopen(
     'https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv'))
@@ -76,7 +95,7 @@ state_cases_df = pd.read_csv(urllib.request.urlopen(
 texas_df = state_cases_df[state_cases_df.state == 'Texas']
 
 # Get the model predictions for the counties, default set to Bexar county
-df = pd.read_csv("formatted_all_data.csv")
+df = pd.read_csv(filename)
 date_list = sorted(df['date'].unique().tolist())
 
 dates = df['date'].unique().tolist()
@@ -318,9 +337,10 @@ app.layout = html.Div(
      Input('chart-dropdown', 'value')]
 )
 def plot_map(selected_date, selected_mob):
-    new_path = path.abspath(path.join('GEOJSONs'))
+    basepath = os.path.join(ROOT_DIR, 'Dashboard')
+    new_path = path.abspath(path.join(basepath,'GEOJSONs'))
     path_new = path.abspath(
-        path.join(new_path, str(DATE_MODIFIED[selected_date])))
+        path.join(path_new, str(DATE_MODIFIED[selected_date])))
     with open('{}.geojson'.format(path_new)) as readfile:
         geojson_file = geojson.load(readfile)
 

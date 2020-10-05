@@ -50,6 +50,5 @@ for county in county_list:
 pred_df = pd.DataFrame.from_dict(prediction_dict)
 timestamp = dt.datetime.now().strftime('%Y_%m_%d_%H_%M')
 
-# pred_df.to_csv(os.path.join(PREDS_DIR,'model_predictions_{}.csv'.format(timestamp)))
 pred_df.to_json(os.path.join(PREDS_DIR,'model_predictions_{}.json'.format(timestamp)))
 print ("Done", prediction_dict.keys())
