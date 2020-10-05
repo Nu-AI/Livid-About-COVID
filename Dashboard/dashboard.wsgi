@@ -6,7 +6,7 @@
 import sys
 sys.path.insert(0, '/opt/dashboard/Livid-About-COVID/')
 sys.path.insert(0, '/opt/dashboard/dash_env/lib/python3.6/site-packages')
-
+sys.path.insert(0, '/opt/dashboard/Livid-About-Covid/Dashboard/')
 #raise ValueError(sys.path)
 
 #import site
@@ -20,4 +20,4 @@ sys.path.insert(0, '/opt/dashboard/dash_env/lib/python3.6/site-packages')
 # Do whatever one works for you, man
 #raise ValueError(sys.path)
 # from texas_dashboard import app as application
-from Dashboard.texas_dashboard import app as application
+from Dashboard.texas_dashboard import server as application
