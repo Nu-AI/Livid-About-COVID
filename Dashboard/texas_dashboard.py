@@ -337,11 +337,11 @@ app.layout = html.Div(
      Input('chart-dropdown', 'value')]
 )
 def plot_map(selected_date, selected_mob):
+    print ("The root directory", ROOT_DIR)
     basepath = os.path.join(ROOT_DIR, 'Dashboard')
     new_path = path.abspath(path.join(basepath,'GEOJSONs'))
-    path_new = path.abspath(
-        path.join(path_new, str(DATE_MODIFIED[selected_date])))
-    with open('{}.geojson'.format(path_new)) as readfile:
+    path_json = path.abspath(path.join(new_path, str(DATE_MODIFIED[selected_date])))
+    with open('{}.geojson'.format(path_json)) as readfile:
         geojson_file = geojson.load(readfile)
 
     px.set_mapbox_access_token(mapbox_access_token)
