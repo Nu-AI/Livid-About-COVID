@@ -60,7 +60,6 @@ def process_data(params, df):
     # Rid NaNs
     print (df.Population[0],df.shape, "the total poulation in the df")
 
-
     print (df.Population.unique(), df.shape, "the new total poulation in the df")
 
     # df.reset_index(inplace=True)
@@ -92,7 +91,6 @@ def process_data(params, df):
 
     # start with delay
     mobility = mobility[params.start_model:]
-    cases = cases[params.start_model:]
 
     return mobility, cases, day0, population, prev_cases
 
