@@ -110,7 +110,6 @@ dates = df['date'].unique().tolist()
 #     param, data=df[df['County'] == 'Bexar County'].reset_index(),
 #     county='Bexar County')
 desc_string = "The rate of COVID-19 infectious spread is dependent on the policies that constrain social interaction and travel. In our work, we model the growth of COVID-19 cases in the state of Texas using mobility data provided publicly by Google. We have used this model, which we call SIRNet, to study the impact of social distancing policies on COVID-19 spread. This dashboard visualizes such mobility data and our daily-updated forecasts at the county level."
-# prediction_df = read_json('model_predictions_2020_09_02_00_16.json')
 prediction_df = read_json(prediction_file)
 actives, totals = prediction_df['Bexar']
 prediction_list = prediction_df.keys().tolist()
@@ -124,7 +123,7 @@ app.layout = html.Div(
 		html.Div
 			(
 			id='header',
-			style={'fontSize': 16, 'display': 'inline-block'},
+			style={'fontSize': 16, 'display': 'inline-block', 'width': '70%'},
 			children=[
 				html.H4(children="COVID-19 predictions in counties in Texas"),
 				html.P(
@@ -132,17 +131,28 @@ app.layout = html.Div(
 					style={'fontSize': 20},
 					# children=" These show the number of active cases registered and observed for coronavirus "
 					#          "for these given day milestones.",
-                    children = "Our research was initially presented at the 2020 International Conference on Machine Learning (Machine Learning for Global Health Workshop), with the latest findings accepted to the 2020 International Joint Conference on AI (Disease Computational Modeling Workshop). If you are interested in using our model or digging deeper into our methods, please see below."
+					children="The rate of COVID-19 infectious spread is dependent on the policies that constrain social interaction and travel. "
+					         "In our work, we model the growth of COVID-19 cases in the state of Texas using mobility data provided publicly by Google."
+					         "We have used this model, which we call SIRNet, to study the impact of social distancing policies on "
+					         "COVID-19 spread. This dashboard visualizes such mobility data and our daily-updated forecasts at the county level."
+					         "Our research was initially presented at the 2020 International Conference on Machine Learning (Machine Learning for Global Health Workshop),"
+					         " with the latest findings accepted to the 2020 International Joint Conference on AI "
+					         "(Disease Computational Modeling Workshop). If you are interested in using our model or "
+					         "digging deeper into our methods, please see below."
 				),
-				html.Details([
-					html.Summary('Read more', style={'cursor': 'pointer'}),
-					html.Div("Please cite us"),
+				html.Details(
+					[
+						html.Summary('Read more', style={'cursor': 'pointer'}),
+						html.Div("Please cite us"),
+					],
+				),
 			],
 		),
+
 		html.Div
 			(
 			id='test_right',
-			style={'display': 'inline-block'},
+			style={'display': 'inline-block', 'vertical-align': 'top', 'horizontal-align': 'right'},
 			children=[
 				daq.LEDDisplay(
 					id="operator-led",
@@ -157,13 +167,12 @@ app.layout = html.Div(
 					backgroundColor="#1e2130",
 					size=50,
 				),
-
 			],
 		),
 		html.Div
 			(
 			id='test_right2',
-			style={'display': 'inline-block'},
+			style={'display': 'inline-block', 'vertical-align': 'top'},
 			children=[
 				daq.LEDDisplay(
 					id="operator-led2",
@@ -178,18 +187,20 @@ app.layout = html.Div(
 					backgroundColor="#1e2130",
 					size=50,
 				),
-
-			],
-		),
-		html.Div
-			(
-			id='test_right3',
-			style={'display': 'inline-block'},
-			children=[html.P("**Predictions last updated on {}".format(str(latest_date)),
+                html.P("**Predictions last updated on {}".format(str(latest_date)),
 			                 id='predictions-update',
 			                 ),
-			          ]
+			],
 		),
+		# html.Div
+		# 	(
+		# 	id='test_right3',
+		# 	style={'display': 'inline-block'},
+		# 	children=[html.P("**Predictions last updated on {}".format(str(latest_date)),
+		# 	                 id='predictions-update2',
+		# 	                 ),
+		# 	          ]
+		# ),
 		html.Div
 			(
 			id='app-container',
@@ -302,6 +313,7 @@ app.layout = html.Div(
 							(
 							"Mobility percentage with respect to baseline",
 							id="prediction_title",
+							style={'margin-right':'5%', 'padding-right':'1rem'}
 						),
 						dcc.RadioItems(
 							id="Radio_block1",

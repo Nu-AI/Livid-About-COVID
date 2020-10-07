@@ -320,7 +320,7 @@ p {
     font-size: 1.5rem;
     border-left: #2cfec1 solid 1rem;
     padding-left: 1rem;
-    max-width: 100rem;
+    /*max-width: 100rem;*/
     margin: 2rem 0 3rem 0;
 }
 
@@ -662,7 +662,8 @@ hr {
 /* Heatmap
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 #heatmap-container {
-    margin: 2.5rem 0 0 0;
+    /*margin: 2.5rem 0 0 0;*/
+    margin: 0 0 0 0;
     background-color: #252e3f;
     padding: 1rem;
 }
@@ -720,7 +721,8 @@ hr {
 
 #graph-container {
     background-color: #252e3f;
-    padding: 1rem;
+    /*padding: 1rem;*/
+    padding: 0;
     margin: 2.5rem;
 }
 
