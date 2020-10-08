@@ -29,3 +29,4 @@ sudo ln -s "$PWD/update_predictions.service" /etc/systemd/system/
 sudo ln -s "$PWD/update_predictions.timer" /etc/systemd/system/
 sudo systemctl enable --now update_predictions.timer
 ```
+Site will be publicly available at `livid-about-covid19.nuai.utsa.edu/`
