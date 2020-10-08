@@ -1,9 +1,0 @@
-[Unit]
-Description=Generate new predictions for dashboard daily
-
-[Timer]
-OnCalendar=*-*-* 02:00:00
-Persistent=true
-
-[Install]
-WantedBy=timers.target

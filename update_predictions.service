@@ -1,7 +1,0 @@
-[Unit]
-Description=Generate new predictions for dashboard
-
-[Service]
-Type=simple
-User=dashboard
-ExecStart=/opt/dashboard/Livid-About-COVID/Dashboard/update_predictions.sh
