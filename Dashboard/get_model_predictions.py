@@ -2,6 +2,9 @@ import os
 from os import path
 import sys
 import traceback
+import shutil
+import tempfile
+import glob
 
 import pandas as pd
 import datetime as dt
@@ -30,23 +33,34 @@ county_list = df.County.unique().tolist()
 print(county_list)
 prediction_dict = {}
 successful = 0
-for county in county_list:
-    county_name = county.split(' ')[0]
-    try:
-        actives, totals = forecast.pipeline(
-            param, data=df[df['County'] == county].reset_index(),
-            county=county)
-        prediction_dict[county_name] = {}
-        prediction_dict[county_name]['active'] = actives
-        prediction_dict[county_name]['total'] = totals
-        for keys in actives.keys():
-            date_list = actives[keys]['date']
-            new_list = list(map(lambda x: x.strftime('%d-%b %Y'), date_list))
-            actives[keys]['date'] = new_list
-            totals[keys]['date'] = new_list
-        successful += 1
-    except RuntimeError:
-        traceback.print_exc()
+tmp_dirname = os.path.dirname(param.weights_dir)
+with tempfile.TemporaryDirectory(dir=tmp_dirname) as tmp_dir:
+    final_weights_dir = param.weights_dir
+    # store weights here, copy to final destination upon successful training
+    param.weights_dir = tmp_dir
+    for county in county_list:
+        county_name = county.split(' ')[0]
+        try:
+            actives, totals = forecast.pipeline(
+                param, data=df[df['County'] == county].reset_index(),
+                county=county)
+            prediction_dict[county_name] = {}
+            prediction_dict[county_name]['active'] = actives
+            prediction_dict[county_name]['total'] = totals
+            for keys in actives.keys():
+                date_list = actives[keys]['date']
+                new_list = list(map(lambda x: x.strftime('%d-%b %Y'), date_list))
+                actives[keys]['date'] = new_list
+                totals[keys]['date'] = new_list
+            # No errors, great
+            successful += 1
+            # Move over all the weights
+            for src_file in glob.iglob(os.path.join(tmp_dir, '*.pt')):
+                dst_file = os.path.join(final_weights_dir,
+                                        os.path.basename(src_file))
+                shutil.move(src_file, dst_file)
+        except RuntimeError:
+            traceback.print_exc()
 
 print('%d / %d counties succeeded in training (%.2f%%)\n' %
       (successful, len(county_list), successful / len(county_list) * 100))

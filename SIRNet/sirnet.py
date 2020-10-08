@@ -112,8 +112,8 @@ class SIRNetBase(ABC, torch.nn.Module):
             # b = ((1 - torch.sigmoid(self.sd) * xt[0, 5]) *
             #      self.q * torch.norm(xm) ** self.p)
 
-            # b = self.q * torch.norm(xt)
-            b = self.q * torch.norm(xt) ** torch.log(self.p)
+            b = self.q * torch.norm(xt)
+            # b = self.q * torch.norm(xt) ** torch.log(self.p)
 
             # b = torch.relu(self.i2b(xt)) ** self.p
         else:
