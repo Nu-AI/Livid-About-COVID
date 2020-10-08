@@ -770,6 +770,10 @@ hr {
         justify-content: flex-start;
     }
 
+    #mobile-note{
+    display: None;
+    }
+
     #selected-data {
         flex-grow: 1;
     }

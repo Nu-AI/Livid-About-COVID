@@ -147,15 +147,15 @@ app.layout = html.Div(
                                      id='read-more'),
                         dcc.Markdown(
                             id='read-more-content',
-                            children=r'''**Mobility Data**
+                            children=r'''### **Mobility Data**
 
 Mobility data is taken from publicly available cell phone data from Google. 
 
-**Forecasts**
+### **Forecasts**
 
 The forecasts shown here are given for various reporting rates, i.e., the presumed percentage of cases that have been reported. This acts as a natural confidence interval, showing the range of scenarios that may hold true depending on reporting methodology and completeness. Furthermore, a mobility percentage can be specified in our dashboard with respect to the baseline. This is an assumed mobility rate for the days that SIRNet makes predictions as there is no data for future dates.
 
-**Using Our Model**
+### **Using Our Model**
 
 Please use the citation below if you intend to use our predictions or model. You can read the [preprint of the SIRNet on arXiv here](https://arxiv.org/abs/2004.10376). 
 
@@ -163,7 +163,7 @@ You can view and run our codebase for this work (and dashboard) [on GitHub](http
 
 You can also contact our lab and see what other work we are doing [at our Nu.AI lab website](https://www.nuailab.com/).
 
-Our latest work, accepted as a paper at IJCAI'20:
+Our latest work, accepted as a paper at 25th International Joint Conferences on Artificial Intelligence([IJCAI'20](https://dcm-2020.github.io/)):
 ```text
 @inproceedings{souresSIRNetIJCAI2020,
   title     = {SIRNet: Understanding Social Distancing Measures with Hybrid Neural Network Model for COVID-19 Infectious Spread},
@@ -174,7 +174,7 @@ Our latest work, accepted as a paper at IJCAI'20:
 }
 ```
 
-Earlier progress of SIRNet, presented as a poster at ICML'20:
+Earlier progress of SIRNet, presented as a poster at the 37th International Conference on Machine Learning([ICML'20](https://mlforglobalhealth.org/posters-and-spotlights/)):
 ```text
 @inproceedings{souresSIRNetICML2020,
   title     = {SIRNet: Understanding Social Distancing Measures with Hybrid Neural Network Model for COVID-19 Infectious Spread},
@@ -233,6 +233,8 @@ Earlier progress of SIRNet, presented as a poster at ICML'20:
                 html.P("**Predictions last updated on {}".format(str(latest_date)),
                              id='predictions-update',
                              ),
+                html.P("*** On mobile the plots look best in landscape mode",
+                       id='mobile-note'),
             ],
         ),
         # html.Div
