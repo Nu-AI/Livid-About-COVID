@@ -60,8 +60,10 @@ def conflate_data(paramdict, verbose=0):
         county_list = list(df_required['sub_region_2'].values)
         unique_list = list(df_required['sub_region_2'].unique())
         counter = [county_list.count(i) for i in unique_list]
-        pop_list = [pop_list[j] for j in range(len(counter)) for _ in
-                    range(counter[j])]
+
+        if counter is not None:
+            pop_list = [pop_list[j] for j in range(len(counter)) for _ in
+                        range(counter[j])]        
 
         df_required['Population'] = pop_list
 
