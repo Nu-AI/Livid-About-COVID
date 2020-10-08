@@ -29,6 +29,7 @@ latest_date = "-".join(i for i in latest_prediction_date)
 print(latest_date)
 sys.path.append(ROOT_DIR)
 sys.path.append(DASH_DIR)
+
 from Dashboard.GEOJSONs.create_geojson import generate_geojson
 import json
 
@@ -43,7 +44,6 @@ basepath = os.path.join(ROOT_DIR, 'Dashboard')
 filepath = path.abspath(path.join(basepath, 'GEOJSONs'))
 directory = os.path.dirname(os.path.abspath(__file__))
 filename = os.path.join(directory, 'formatted_all_data.csv')
-# print ("The filepath", filepath)
 # Get the data from the data collection module
 formatted_data = pd.read_csv(filename, dtype={'fips': str})
 
@@ -66,6 +66,7 @@ app = dash.Dash(
         {'name': 'viewport', 'content': 'width=device-width, initial-scale=1.0'}
     ],
 )
+
 # '''
 # app.config.update({
 #     # as the proxy server will remove the prefix
@@ -415,10 +416,10 @@ def update_text(value):
      Input('chart-dropdown', 'value')]
 )
 def plot_map(selected_date, selected_mob):
+    print("The root directory", ROOT_DIR)
     basepath = os.path.join(ROOT_DIR, 'Dashboard')
-    new_path = path.abspath(path.join(basepath, 'GEOJSONs'))
-    path_json = path.abspath(
-        path.join(new_path, str(DATE_MODIFIED[selected_date])))
+    new_path = path.abspath(path.join(basepath,'GEOJSONs'))
+    path_json = path.abspath(path.join(new_path, str(DATE_MODIFIED[selected_date])))
     with open('{}.geojson'.format(path_json)) as readfile:
         geojson_file = geojson.load(readfile)
 
