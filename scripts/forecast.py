@@ -4,7 +4,7 @@ import datetime as dt
 from copy import deepcopy
 import os
 from os.path import join as pjoin
-from SIRNet.data_collection import data_utils
+
 # === start paths ===
 ROOT_DIR = pjoin(os.path.dirname(__file__), '..')
 sys.path.append(ROOT_DIR)
@@ -17,6 +17,7 @@ RESULTS_DIR = pjoin(ROOT_DIR, 'prediction_results')
 if not os.path.exists(RESULTS_DIR):
     os.mkdir(RESULTS_DIR)
 # === end paths ===
+from SIRNet.data_collection import data_utils
 
 MOBILITY_KEYS = ['Retail & recreation', 'Grocery & pharmacy', 'Parks',
                  'Transit stations', 'Workplace', 'Residential']
