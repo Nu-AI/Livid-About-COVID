@@ -198,12 +198,10 @@ def get_country_data():
     df2 = pd.read_csv(pm.TESTING_COUNTRY_DATA_SOURCE)
 
     df_country = df.loc[df['country_name'].isin(pm.params['country'])]
-    # df2_country = df2.loc[df2.location.isin(pm.params['country'])]
 
     df_country.reset_index(inplace=True)
     df_country.merge(df2, how='inner', left_on='ISO',
                      right_on='iso_code')
-    # print (df_country.cases_total.values, df_country.keys())
     # Setting all the required columns
     temp = df_country.keys()
     required_keylist = list(filter(lambda x: 'mobility' in x, temp))
