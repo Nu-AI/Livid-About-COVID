@@ -113,7 +113,7 @@ prediction_df = read_json(prediction_file)
 actives, totals = prediction_df['Bexar']
 prediction_list = prediction_df.keys().tolist()
 # Date list in the slider menu
-DATE_MODIFIED = [dates[::-1][i] for i in range(len(dates)) if i % 20 == 0][::-1]
+DATE_MODIFIED = [sorted(dates)[::-1][i] for i in range(len(dates)) if i % 20 == 0][::-1]
 print(DATE_MODIFIED, "The date modified")
 # The screen layout
 app.layout = html.Div(

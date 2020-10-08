@@ -48,7 +48,7 @@ for county in county_list:
     except RuntimeError:
         traceback.print_exc()
 
-print('%d / %d counties succeeded in training (%.2f%%)' %
+print('%d / %d counties succeeded in training (%.2f%%)\n' %
       (successful, len(county_list), successful / len(county_list) * 100))
 
 pred_df = pd.DataFrame.from_dict(prediction_dict)

@@ -101,18 +101,11 @@ class SIRNetBase(ABC, torch.nn.Module):
             #  option to change tanh to relu - needs custom LSTM implementation
             #  in Python to change activation function to mitigate negatives...
 
-            # TODO: try just shifting from -1/+1 to 0/+1 range...
-            # print(b_inter)
-            # b_inter = b_inter / 2. + 0.5
-            # print(b_inter)
-
             # Multiply by empirical scalar...
             # b = torch.relu(self.l2b(b_inter)).squeeze()  # * 5.
             b = torch.relu(self.l2b(
                 torch.norm(b_inter).reshape(1, 1))
             ).squeeze()  # * 5.
-            # print(b)
-            # print()
         elif self.b_model == 'linear':
             # Just look at norm of mobility
             # xm = xt.clone()
