@@ -63,7 +63,7 @@ def conflate_data(paramdict, verbose=0):
 
         if counter is not None:
             pop_list = [pop_list[j] for j in range(len(counter)) for _ in
-                        range(counter[j])]        
+                        range(counter[j])]
 
         df_required['Population'] = pop_list
 
