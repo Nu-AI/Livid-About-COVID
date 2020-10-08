@@ -45,6 +45,18 @@ For the most up-to-date forecasting employing SIRNet, run the script `scripts/fo
 installation. Parameters within can be modified for different counties, states, countries, etc.
 Stay tuned for a more generalized and unified script-based interface.
 
+Example usage:
+
+```bash
+./forecast.py --country "United States" --state "Texas" --county "Bexar County"
+```
+
+For help on all command line options:
+
+```bash
+./forecast.py --help
+```
+
 ## Forecasting the Reach of the COVID-19 Disease
 We use the worldwide daily case, mobility, hospital, population, and other data factors
 to forecast the number of cases. One model is a hybrid Susceptible-Infected-Recovered (SIR)
