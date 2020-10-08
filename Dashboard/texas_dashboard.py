@@ -478,4 +478,5 @@ def cont_error_bar(fig, x, y1, y2, y3, selected_percent):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True, use_reloader=False)
+    # app.run_server(debug=True, use_reloader=False)
+    app.run_server(debug=False, use_reloader=False)
