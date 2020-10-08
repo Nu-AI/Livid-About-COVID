@@ -316,12 +316,12 @@ p {
     font-size: 2rem;
 }
 
-#description {
+#description, #read-more-content {
     font-size: 1.5rem;
     border-left: #2cfec1 solid 1rem;
     padding-left: 1rem;
     /*max-width: 100rem;*/
-    margin: 2rem 0 3rem 0;
+    margin: 2rem 2rem 3rem 0;
 }
 
 #logo {
@@ -688,7 +688,7 @@ hr {
 }
 
 @media (max-width: 550px) {
-    #county-choropleth .annotation-text{
+    #county-choropleth .annotation-text {
         font-size: 1.2rem !important;
     }
 }
@@ -748,10 +748,9 @@ hr {
         padding-right: 2rem;
     }
 
-    #header p {
-        font-size: 1.5rem;
-    }
-
+    /*#header p {*/
+    /*    font-size: 1.8rem;*/
+    /*}*/
     #graph-container {
         flex: 4 40%;
         flex-grow: 1;
@@ -772,11 +771,11 @@ hr {
         padding: 2.5rem;
     }
 
-    #selected-data .xtick text{
+    #selected-data .xtick text {
         font-size: 1.1rem !important;
     }
 
-    #selected-data .gtitle{
+    #selected-data .gtitle {
         font-size: 1.7rem !important;
     }
 }
@@ -853,11 +852,30 @@ hr {
     margin-left: 1.5%;
 }
 
-
-div, svg {
-    user-select: none !important;
-}
+/*div, svg {*/
+/*    user-select: none !important;*/
+/*}*/
 
 ._dash-undo-redo {
     display: none;
+}
+
+#header p {
+    text-align: justify;
+    text-justify: inter-word;
+    font-size: 1.8rem;
+}
+
+#header pre {
+    font-size: 1.5rem;
+    line-height: 1.2;
+    white-space: pre-wrap; /* css-3 */
+    white-space: -moz-pre-wrap; /* Mozilla, since 1999 */
+    white-space: -pre-wrap; /* Opera 4-6 */
+    white-space: -o-pre-wrap; /* Opera 7 */
+    word-wrap: break-word; /* Internet Explorer 5.5+ */
+}
+
+#read-more {
+    padding-bottom: 2rem;
 }
