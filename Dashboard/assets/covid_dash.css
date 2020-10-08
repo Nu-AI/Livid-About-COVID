@@ -739,6 +739,10 @@ hr {
     #selected-data {
         height: 55rem;
     }
+
+    .rc-slider-mark-text:not(:first-child):not(:last-child) {
+        display: none
+    }
 }
 
 @media (min-width: 1251px) {
@@ -746,6 +750,11 @@ hr {
     #logo {
         float: right;
         padding-right: 2rem;
+    }
+
+    #header {
+        width: 70%;
+        display: inline-block
     }
 
     /*#header p {*/

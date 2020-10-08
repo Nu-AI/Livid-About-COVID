@@ -21,8 +21,9 @@ ROOT_DIR = os.path.join(basepath, '..')
 DASH_DIR = os.path.abspath(os.path.join(ROOT_DIR, 'Dashboard'))
 PREDS_DIR = os.path.join(DASH_DIR, 'model_predictions')
 
-file_list = glob.glob(os.path.join(PREDS_DIR, '*'))
-prediction_file = max(file_list, key=os.path.getctime)
+file_list = glob.glob(os.path.join(PREDS_DIR, '*.json'))
+# prediction_file = max(file_list, key=os.path.getctime)
+prediction_file = max(file_list)
 latest_prediction_filename = os.path.splitext(os.path.basename(prediction_file))[0]
 latest_prediction_date = str(latest_prediction_filename).split("_")[2:5]
 latest_date = "-".join(i for i in latest_prediction_date)
@@ -123,7 +124,7 @@ app.layout = html.Div(
         html.Div
             (
             id='header',
-            style={'fontSize': 16, 'display': 'inline-block', 'width': '70%'},
+            # style={'fontSize': 16, 'display': 'inline-block', 'width': '70%'},
             children=[
                 html.H4(children="COVID-19 predictions in counties in Texas"),
                 dcc.Markdown(
