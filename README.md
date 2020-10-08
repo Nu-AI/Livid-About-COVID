@@ -10,12 +10,16 @@ Because population dynamics differ between metropolitan areas, region-specific m
 additional insights. We present some preliminary results on forecasting the spread of the
 COVID-19 disease by the SARS-CoV-2 virus on various scales.
 
+You can view the live dashboard of this work with case forecasts for Texas & mobility data 
+visualization on [our site here](https://livid-about-covid19.nuai.utsa.edu/).
+
 *If you would like to use this work*, please reference this GitHub repository by the Zenodo
 citation in the top of this README and the preprint reference below.
 
 _N Soures, D Chambers, Z Carmichael, A Daram, DP Shah, K Clark, L Potter, and D Kudithipudi.
 "SIRNet: Understanding Social Distancing Measures with Hybrid Neural Network Model for COVID-19
-Infectious Spread." arXiv preprint arXiv:2004.10376 (2020)_ -
+Infectious Spread." Proceedings of the International Joint Conference on Artificial Intelligence,
+(IJCAI), Disease Computational Modeling Workshop (2020)_ -
 [arxiv.org/abs/2004.10376](https://arxiv.org/abs/2004.10376)
 
 <img src="images/tx_case_counts_updated_2.png" width="750px" />

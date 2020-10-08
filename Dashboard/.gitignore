@@ -7,3 +7,5 @@
 # Images
 *.png
 *.jpg
+*.csv
+*.idea/

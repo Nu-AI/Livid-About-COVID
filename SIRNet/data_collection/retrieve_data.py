@@ -8,6 +8,8 @@ from . import parameters
 
 warnings.filterwarnings('ignore')
 
+MOBILITY_KEYS = ['Retail & recreation', 'Grocery & pharmacy', 'Parks',
+                 'Transit stations', 'Workplace', 'Residential']
 
 ## Steps:
 # Input will be county name and state name
@@ -24,7 +26,6 @@ def conflate_data(paramdict, verbose=0):
     if verbose:
         print("getting mobility data ..")
     df_required = get_data.get_mobility_data()
-
     country_flag = 1
     # The below case exists because of lack of data integration for countries
     # other than USA
@@ -60,7 +61,6 @@ def conflate_data(paramdict, verbose=0):
         county_list = list(df_required['sub_region_2'].values)
         unique_list = list(df_required['sub_region_2'].unique())
         counter = [county_list.count(i) for i in unique_list]
-
         if counter is not None:
             pop_list = [pop_list[j] for j in range(len(counter)) for _ in
                         range(counter[j])]
@@ -77,7 +77,6 @@ def conflate_data(paramdict, verbose=0):
             c_list = county_cases_df['county'].unique().tolist()
             print('Unique Counties in Data:')
             print(c_list)
-
         df_required['Cases'] = county_cases_df['cases'].values
         df_required['Deaths'] = county_cases_df['deaths'].values
         fips_list = county_cases_df['fips'].values
@@ -210,10 +209,12 @@ def conflate_data(paramdict, verbose=0):
         npi_list = [x for x in df_required.keys() if 'npi' in x]
         required_keys += npi_list
 
+    length_list = [len(value) if value is not None else 0 for value in paramdict.values()]
+    if max(length_list) == 1 and 'all' not in paramdict['counties']:
+        df_required = df_required.drop_duplicates(subset=['date'], keep='last')
     df_required = df_required[required_keys].reset_index()
     if verbose:
-        # print(df_required.tail(20))
+        print(df_required.tail(20))
         df_required.to_csv("formatted_all_data.csv")
     return df_required
-
 

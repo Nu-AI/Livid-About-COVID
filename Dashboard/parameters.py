@@ -3,6 +3,7 @@
 import os.path as _p
 
 weights_dir = _p.realpath(_p.join(_p.dirname(__file__), 'model_weights'))
+del _p
 country = 'United States'
 state = 'Texas'
 county = 'Bexar County'

@@ -4,7 +4,7 @@ import datetime as dt
 from copy import deepcopy
 import os
 from os.path import join as pjoin
-
+from SIRNet.data_collection import data_utils
 # === start paths ===
 ROOT_DIR = pjoin(os.path.dirname(__file__), '..')
 sys.path.append(ROOT_DIR)
@@ -61,8 +61,11 @@ def process_data(params, df):
     :return: prev_cases - the number of cases on the day preceding day0
     """
     # Rid NaNs
-    df.dropna(inplace=True, subset=MOBILITY_KEYS)
-    df.reset_index(inplace=True)
+    print (df.Population[0],df.shape, "the total poulation in the df")
+
+    print (df.Population.unique(), df.shape, "the new total poulation in the df")
+
+    # df.reset_index(inplace=True)
 
     mobility = df[MOBILITY_KEYS]
     cases = df['Cases']
@@ -77,14 +80,25 @@ def process_data(params, df):
     # offset case data by delay days (treat it as though it was recorded
     # earlier)
     cases = np.array(cases[params.delay_days:])
-    mobility = np.array(mobility[:-params.delay_days])
 
+    orig_len = len(mobility)
+    mobility = np.array(mobility[:-params.delay_days])
+    mobility = data_utils.filter_mobility_data(mobility)
     mobility = np.asarray(mobility).astype(np.float32)
+    not_nan_idx = ~np.isnan(mobility).any(axis=1)
+    mobility = mobility[not_nan_idx]
+    cases = cases[not_nan_idx]
+
+    if orig_len > len(mobility):
+        print('WARNING: data contained NaNs (%d/%d, %.2f%%) removed. You may '
+              'experience issues when fitting the model.' %
+              (orig_len - len(mobility), orig_len,
+               (orig_len - len(mobility)) / orig_len * 100))
     # convert percentages of change to fractions of activity
     mobility[:, :6] = 1.0 + mobility[:, :6] / 100.0
 
     # Turn the last column into 1-hot social-distancing enforcement
-    mobility[:, 5] = 0  # rid residential mobility...TODO no me gusta
+    mobility[:, 5] = 0  # rid residential mobility...TODO...
     if params.mask_modifier:
         mobility[params.mask_day:, 5] = 1.0
 
