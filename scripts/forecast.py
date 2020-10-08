@@ -77,20 +77,31 @@ def process_data(params, df):
     # offset case data by delay days (treat it as though it was recorded
     # earlier)
     cases = np.array(cases[params.delay_days:])
+
+    orig_len = len(mobility)
     mobility = np.array(mobility[:-params.delay_days])
     mobility = data_utils.filter_mobility_data(mobility)
     mobility = np.asarray(mobility).astype(np.float32)
-    mobility = mobility[~np.isnan(mobility).any(axis=1)]
+    not_nan_idx = ~np.isnan(mobility).any(axis=1)
+    mobility = mobility[not_nan_idx]
+    cases = cases[not_nan_idx]
+
+    if orig_len > len(mobility):
+        print('WARNING: data contained NaNs (%d/%d, %.2f%%) removed. You may '
+              'experience issues when fitting the model.' %
+              (orig_len - len(mobility), orig_len,
+               (orig_len - len(mobility)) / orig_len * 100))
     # convert percentages of change to fractions of activity
     mobility[:, :6] = 1.0 + mobility[:, :6] / 100.0
 
     # Turn the last column into 1-hot social-distancing enforcement
-    mobility[:, 5] = 0  # rid residential mobility...TODO no me gusta
+    mobility[:, 5] = 0  # rid residential mobility...TODO...
     if params.mask_modifier:
         mobility[params.mask_day:, 5] = 1.0
 
     # start with delay
     mobility = mobility[params.start_model:]
+    cases = cases[params.start_model:]
 
     return mobility, cases, day0, population, prev_cases
 

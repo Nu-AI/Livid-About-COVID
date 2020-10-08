@@ -44,13 +44,12 @@ for county in county_list:
             new_list = list(map(lambda x: x.strftime('%d-%b %Y'), date_list))
             actives[keys]['date'] = new_list
             totals[keys]['date'] = new_list
-        # print (actives.keys(),actives[0.05].keys())
         successful += 1
     except RuntimeError:
         traceback.print_exc()
 
 print('%d / %d counties succeeded in training (%.2f%%)' %
-      (successful, len(county_list), successful / len(county_list)))
+      (successful, len(county_list), successful / len(county_list) * 100))
 
 pred_df = pd.DataFrame.from_dict(prediction_dict)
 timestamp = dt.datetime.now().strftime('%Y_%m_%d_%H_%M')
