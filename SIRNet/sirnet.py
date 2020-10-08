@@ -53,12 +53,12 @@ class SIRNetBase(ABC, torch.nn.Module):
 
         if self.b_model == 'linear':
             # Initialization from prior training
-            # b_init = torch.tensor(
-            #     [[7.3690e-02, 1.0000e-04, 1.0000e-04, 6.5169e-02, 1.4331e-01,
-            #       2.9631e-03]], dtype=torch.float32
-            # )
-            # self.i2b = torch.nn.Linear(self.input_size, 1, bias=False)
-            # self.i2b.weight.data = b_init
+            b_init = torch.tensor(
+                [[7.3690e-02, 1.0000e-04, 1.0000e-04, 6.5169e-02, 1.4331e-01,
+                  2.9631e-03]], dtype=torch.float32
+            )
+            self.i2b = torch.nn.Linear(self.input_size, 1, bias=False)
+            self.i2b.weight.data = b_init
 
             # p and q
             self.p = Parameter(torch.tensor([[2.5]], dtype=torch.float32),
@@ -111,8 +111,11 @@ class SIRNetBase(ABC, torch.nn.Module):
             # xm = xt.clone()
             # b = ((1 - torch.sigmoid(self.sd) * xt[0, 5]) *
             #      self.q * torch.norm(xm) ** self.p)
-            b = self.q * torch.norm(xt)
-            # b = torch.relu(self.i2b(xm)) ** self.p
+
+            # b = self.q * torch.norm(xt)
+            b = self.q * torch.norm(xt) ** torch.log(self.p)
+
+            # b = torch.relu(self.i2b(xt)) ** self.p
         else:
             raise RuntimeError('b_model is invalid, this should not have '
                                'happened')  # earlier check in _make_b_model()

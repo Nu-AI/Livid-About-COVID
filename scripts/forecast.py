@@ -39,8 +39,11 @@ def load_data(params):
         'counties': None if params.county is None else [params.county]
     }
 
-
-    return retrieve_data.conflate_data(paramdict)
+    df = retrieve_data.conflate_data(paramdict)
+    # TODO: df is empty if data isn't available for input...ideally should have
+    #  message saying, hey looks like you typed X but maybe you meant Y? Like
+    #  Russian Federation exists but Russia does not
+    return df
 
 
 def process_data(params, df):
@@ -295,6 +298,12 @@ def pipeline(params=None, **kwargs):
         params = default_params
     params.update(kwargs)
 
+    # validate some values
+    if params.cv_split:
+        assert 0 < params.cv_split < 1, (
+            'cv-split must be in range (0,1), but received '
+            '{}'.format(params.cv_split))
+
     data_action = 'Loading'
     dump_config = True
     if params.data is None:
@@ -355,6 +364,17 @@ def pipeline(params=None, **kwargs):
         X = X.reshape(X.shape[0], 1, X.shape[1])  # time x batch x channels
         Y = Y.reshape(Y.shape[0], 1, 1)  # time x batch x channels
 
+        # Maybe CV prep
+        X_train, Y_train = X, Y
+        split_idx = None
+        if params.cv_split:
+            # TODO: will not work as expected for multi-region here
+            split_idx = max(int((1 - params.cv_split) * X_train.shape[0]), 1)
+            assert split_idx < X.shape[0], 'Too few samples for split'
+            X_train, Y_train = X_train[:split_idx], Y_train[:split_idx]
+            print('Training on {} samples, testing on {} '
+                  'samples.'.format(split_idx, len(X) - split_idx))
+
         # Training
         weights_name = pjoin(weights_dir_base, '{}_report{}_weights.pt'.format(
             county_name, reporting_rate))
@@ -364,14 +384,47 @@ def pipeline(params=None, **kwargs):
                 county_name, reporting_rate))
         ) if params.tensorboard else None
 
-        model = model_and_fit(weights_name, X, Y, scale_factor, prev_cases,
-                              params, summary_writer=writer)
+        model = model_and_fit(weights_name, X_train, Y_train, scale_factor,
+                              prev_cases, params, summary_writer=writer)
 
         if params.tensorboard:
             writer.close()
 
         # Forecasting
         active, total = forecast(X, model, dates, scale_factor, params)
+        if split_idx:
+            cases_true = cases[split_idx:len(X)]
+            print('Total Population: {}'.format(population))
+            print()
+            print('These first ones will all be the same, using mobility data '
+                  '(no mobility cases...)')  # TODO TODO
+            for case in params.mobility_cases:
+                cases_pred = total[case][split_idx:len(X)]
+                mse = metrics.mean_squared_error_samplewise(
+                    y_pred=cases_pred, y_true=cases_true)
+                rmse = metrics.root_mean_squared_error_samplewise(
+                    y_pred=cases_pred, y_true=cases_true)
+                mape = metrics.mean_absolute_percentage_error_samplewise(
+                    y_pred=cases_pred, y_true=cases_true)
+                print('Held-out test set, mobility case {}%'.format(case))
+                print('  MSE  {}'.format(mse))
+                print('  RMSE {}'.format(rmse))
+                print('  MAPE {}'.format(mape))
+
+            _, total_x = forecast(X_train, model, dates, scale_factor,
+                                  params)
+            for case in params.mobility_cases:
+                cases_pred = total_x[case][split_idx:len(X)]
+                mse = metrics.mean_squared_error_samplewise(
+                    y_pred=cases_pred, y_true=cases_true)
+                rmse = metrics.root_mean_squared_error_samplewise(
+                    y_pred=cases_pred, y_true=cases_true)
+                mape = metrics.mean_absolute_percentage_error_samplewise(
+                    y_pred=cases_pred, y_true=cases_true)
+                print('Held-out test set, mobility case {}%'.format(case))
+                print('  MSE  {}'.format(mse))
+                print('  RMSE {}'.format(rmse))
+                print('  MAPE {}'.format(mape))
         actives[reporting_rate] = active
         totals[reporting_rate] = total
 
@@ -415,6 +468,7 @@ DEFAULTS.update(dict(
     start_model=23,
     incubation_days=5,
     estimated_r0=2.2,
+    cv_split=None,
     tensorboard=False,
     no_plot=False,
     data=None,
@@ -501,6 +555,11 @@ if __name__ == '__main__':
 
     g_misc = parser.add_argument_group('Misc. Options')
     g_misc.add_argument(
+        '--cv-split', type=float, default=DEFAULTS.cv_split,
+        help='Hold out this percentage of data to test the fit on, e.g., 0.25 '
+             'uses the last 25%% of days to evaluate the fit'
+    )
+    g_misc.add_argument(
         '--tensorboard', action='store_true',
         help='Store logs to that can be visualized in tensorboard (this needs '
              'to be installed beforehand). Run tensorboard with e.g. '
@@ -540,6 +599,7 @@ import matplotlib.pyplot as plt  # noqa
 import torch  # noqa
 from SIRNet import util, trainer  # noqa
 from SIRNet.data_collection import retrieve_data  # noqa
+from SIRNet import metrics  # noqa
 
 if __name__ == '__main__':
     pipeline(args)  # noqa

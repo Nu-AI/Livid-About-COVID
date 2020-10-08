@@ -4,6 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
+import torch
+
 
 def to_numpy(tensor, squeeze=True, warn=True):
     """Converts a PyTorch Tensor to a NumPy array.
@@ -14,13 +16,13 @@ def to_numpy(tensor, squeeze=True, warn=True):
     :param warn: Whether to give a warning if input already is NumPy
     :return: PyTorch tensor as a NumPy array
     """
-    if isinstance(tensor, np.ndarray):
-        if warn:
-            warnings.warn('to_numpy was passed tensor, but it is already a '
-                          'NumPy ndarray. Continuing..')
-        t_npy = tensor
-    else:
+    if isinstance(tensor, torch.Tensor):
         t_npy = tensor.cpu().detach().numpy()
+    else:
+        if warn:
+            warnings.warn('to_numpy was passed tensor, but it is not a '
+                          'Torch Tensor. Continuing..')
+        t_npy = tensor
     if squeeze:
         t_npy = np.squeeze(t_npy)
     return t_npy
