@@ -9,7 +9,7 @@ torch~=1.4.1
 keras
 seaborn~=0.10.0
 matplotlib~=3.2.1
-numpy~=1.18.3
+numpy~=1.22.0
 scipy
 scikit-learn
 pandas~=1.0.3
