@@ -7,7 +7,7 @@ pandas==1.0.3
 xlrd==1.2.0
 plotly==4.9.0
 cufflinks==0.17.3
-dash_core_components==1.10.0
+dash_core_components==2.0.0
 geojson==2.5.0
 dash_daq==0.5.0
 dash==1.12.0
